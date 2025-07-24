@@ -1,0 +1,56 @@
+{
+  "name": "family-chart",
+  "version": "0.7.2",
+  "description": "family tree creator and viewer",
+  "keywords": [
+    "datafull",
+    "family-chart",
+    "family tree",
+    "d3"
+  ],
+  "homepage": "https://donatso.github.io/family-chart/",
+  "license": "ISC",
+  "author": {
+    "name": "donatso"
+  },
+  "main": "dist/family-chart.js",
+  "unpkg": "dist/family-chart.min.js",
+  "module": "dist/family-chart.esm.js",
+  "exports": {
+    ".": {
+      "import": "./dist/family-chart.esm.js",
+      "require": "./dist/family-chart.js"
+    },
+    "./styles/*": "./dist/styles/*"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/donatso/family-chart.git"
+  },
+  "files": [
+    "dist/**/*.js",
+    "dist/styles/**"
+  ],
+  "scripts": {
+    "build": "node build.js",
+    "test": "yarn run cypress open --project tests",
+    "dev": "vite",
+    "prepublishOnly": "node build.js"
+  },
+  "sideEffects": false,
+  "dependencies": {
+    "d3": "6"
+  },
+  "devDependencies": {
+    "@rollup/plugin-terser": "^0.4.4",
+    "@rollup/plugin-typescript": "^12.1.4",
+    "@types/d3": "^7.4.3",
+    "@types/d3-array": "^3.2.1",
+    "@types/d3-hierarchy": "^3.1.7",
+    "cypress": "^9.1.0",
+    "http-server": "^14.1.1",
+    "rollup": "^4.45.1",
+    "typescript": "^5.8.3",
+    "vite": "^6.3.5"
+  }
+}
