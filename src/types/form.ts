@@ -14,7 +14,7 @@ export interface FormCreatorSetupProps {
   onCancel: () => void
   editFirst: boolean
   no_edit: boolean
-  link_existing_rel_config: any  // todo: LinkExistingRelConfig
+  link_existing_rel_config?: {linkRelLabel: (d: Datum) => string, title?: string, select_placeholder?: string}
   onFormCreation: EditTree['onFormCreation']
   addRelative?: AddRelative
   removeRelative?: RemoveRelative

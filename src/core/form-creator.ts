@@ -1,7 +1,6 @@
 import { getLinkRelOptions } from "../store/add-existing-rel"
 import { submitFormData } from "../store/edit"
 import { Data, Datum } from "../types/data"
-import { EditTree } from "./edit"
 import {
   FormCreatorSetupProps,
   FormCreator,
@@ -142,9 +141,11 @@ export function formCreatorSetup({
     form_creator.fields.push(select_field)
   }
 
-  function createLinkExistingRelative(datum: Datum, data: Data, link_existing_rel_config: EditTree['link_existing_rel_config']) {
+  function createLinkExistingRelative(datum: Datum, data: Data, link_existing_rel_config: FormCreatorSetupProps['link_existing_rel_config']) {
+    if (!link_existing_rel_config) throw new Error('link_existing_rel_config is required')
     const obj = {
-      label: link_existing_rel_config.label,
+      title: link_existing_rel_config.title,
+      select_placeholder: link_existing_rel_config.select_placeholder,
       options: getLinkRelOptions(datum, data)
         .map((d: Datum) => ({value: d.id, label: link_existing_rel_config.linkRelLabel(d)}))
         .sort((a: {label: string}, b: {label: string}) => {

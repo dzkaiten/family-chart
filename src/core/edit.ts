@@ -59,7 +59,7 @@ export class EditTree {
   onChange: (() => void) | null
   editFirst: boolean
   postSubmit: ((datum: Datum, data: Data) => void) | null
-  link_existing_rel_config: any
+  link_existing_rel_config?: FormCreatorSetupProps['link_existing_rel_config']
   onFormCreation: null | ((props: {cont: HTMLElement, form_creator: FormCreator}) => void)
 
   addRelativeInstance: AddRelative
@@ -95,9 +95,7 @@ export class EditTree {
     this.editFirst = false
   
     this.postSubmit = null
-  
-    this.link_existing_rel_config = null
-  
+    
     this.onFormCreation = null
     
     this.createFormEdit = null
