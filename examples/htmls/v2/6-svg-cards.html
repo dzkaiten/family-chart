@@ -31,7 +31,7 @@ function create(data) {
     .setCardXSpacing(250)
     .setCardYSpacing(150)
 
-  f3Chart.setCard(f3.CardSvg)
+  f3Chart.setCardSvg()
     .setCardDisplay([["first name","last name"],["birthday"]])
     .setCardDim({w:200,h:70,text_x:75,text_y:15,img_w:60,img_h:60,img_x:5,img_y:5})
     .setOnCardUpdate(function(d) {
@@ -42,6 +42,5 @@ function create(data) {
 }
 
 </script>
-
 </body>
 </html>

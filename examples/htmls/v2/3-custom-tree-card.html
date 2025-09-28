@@ -30,7 +30,7 @@ function create(data) {
     .setCardXSpacing(250)
     .setCardYSpacing(150)
 
-  f3Chart.setCard(f3.CardHtml)
+  f3Chart.setCardHtml()
     .setCardInnerHtmlCreator(d => {
       return `<div class="card-inner" style="width: 200px; height: 70px; padding: 15px; border-radius: 5px; text-align: center;">
         <div>${d.data.data["first name"]} ${d.data.data["last name"]}</div>
@@ -41,6 +41,5 @@ function create(data) {
 }
 
 </script>
-
 </body>
 </html>
