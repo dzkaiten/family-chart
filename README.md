@@ -96,8 +96,8 @@ Family Chart works seamlessly with all major JavaScript frameworks and vanilla J
 
 ### API Reference
 - **[Chart API](https://donatso.github.io/family-chart/classes/Chart.html)** - Main chart class and methods
-- **[Edit API](https://donatso.github.io/family-chart/classes/Edit.html)** - Edit functionality and form management
-- **[Card API](https://donatso.github.io/family-chart/classes/Card.html)** - Card components and customization
+- **[EditTree API](https://donatso.github.io/family-chart/classes/EditTree.html)** - Edit functionality and form management
+- **[Card API](https://donatso.github.io/family-chart/classes/CardHtmlClass.html)** - Card components and customization
 
 ### Guides
 - **[Installation & Quick Start](docs/installation-and-quickstart.md)** - Get started in minutes
