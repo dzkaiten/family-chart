@@ -1,5 +1,6 @@
-import CalculateTree from "../layout/calculate-tree"
+import calculateTree from "../layout/calculate-tree"
 import { Datum, Data } from "../types/data"
+import { convertV1toV2 } from "./convert-data"
 import { TreeDatum } from "../types/treeData"
 import { Store, StoreState } from "../types/store"
 import { CalculateTreeOptions, Tree } from "../layout/calculate-tree"
@@ -12,6 +13,7 @@ export default function createStore(initial_state: StoreState): Store {
     ...initial_state,
   };
   state.main_id_history = []
+  if (state.data) convertV1toV2(state.data);
 
   const store = {
     state,
@@ -23,6 +25,7 @@ export default function createStore(initial_state: StoreState): Store {
     },
     updateData: (data: Data) => {
       state.data = data;
+      convertV1toV2(data);
       validateMainId();
     },
     updateMainId,
@@ -61,7 +64,7 @@ export default function createStore(initial_state: StoreState): Store {
     if (state.private_cards_config !== undefined) args.private_cards_config = state.private_cards_config;
     if (state.duplicate_branch_toggle !== undefined) args.duplicate_branch_toggle = state.duplicate_branch_toggle;
     
-    return CalculateTree(state.data, args);
+    return calculateTree(state.data, args);
   }
 
   function getMainDatum(): Datum {

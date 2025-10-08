@@ -2,7 +2,7 @@ import { Datum } from "../types/data";
 
 export function checkIfRelativesConnectedWithoutPerson(datum: Datum, data_stash: Datum[]) {
   const r = datum.rels
-  const r_ids = [r.father, r.mother, ...(r.spouses || []), ...(r.children || [])].filter(r_id => !!r_id) as Datum['id'][]
+  const r_ids = [...r.parents, ...(r.spouses || []), ...(r.children || [])].filter(r_id => !!r_id) as Datum['id'][]
   for (const r_id of r_ids) {
     const person = data_stash.find(d => d.id === r_id)!
     if (!checkIfConnectedToFirstPerson(person, data_stash, [datum.id])) return false
@@ -22,7 +22,7 @@ export function checkIfConnectedToFirstPerson(datum: Datum, data_stash: Datum[],
   function checkRels(d0: Datum) {
     if (connected) return
     const r = d0.rels
-    const r_ids = [r.father, r.mother, ...(r.spouses || []), ...(r.children || [])].filter(r_id => !!r_id)
+    const r_ids = [...r.parents, ...(r.spouses || []), ...(r.children || [])].filter(r_id => !!r_id)
     r_ids.forEach(r_id => {
       if (rels_checked.includes(r_id!)) return
       rels_checked.push(r_id!)

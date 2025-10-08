@@ -106,7 +106,7 @@ export function LinkBreakIconWrapper({d,card_dim}: {d: TreeDatum, card_dim: Card
   let g = "",
     r = d.data.rels, _r = d.data._rels || {},
     closed = d.data.hide_rels,
-    areParents = (r: TreeDatum['data']['rels' ]) => r.father || r.mother,
+    areParents = (r: TreeDatum['data']['rels' ]) => r.parents.length > 0,
     areChildren = (r: TreeDatum['data']['rels']) => r.children && r.children.length > 0
   if ((d.is_ancestry || d.data.main) && (areParents(r) || areParents(_r))) {g+=LinkBreakIcon({x:card_dim.w/2,y:0, rt: -45, closed}).template}
   if (!d.is_ancestry && d.added) {

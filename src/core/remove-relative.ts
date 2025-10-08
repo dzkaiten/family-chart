@@ -62,26 +62,17 @@ export class RemoveRelative {
       const rel_type = findRelType(rel_tree_datum)
   
       const rels = datum.rels
-      if (rel_type === 'father') handleFatherRemoval.call(this)
-      else if (rel_type === 'mother') handleMotherRemoval.call(this)
+      if (rel_type === 'parent') handleParentRemoval.call(this)
       else if (rel_type === 'spouse') handleSpouseRemoval.call(this)
       else if (rel_type === 'children') handleChildrenRemoval.call(this)
   
-      function handleFatherRemoval() {
-        const father = store.getDatum(rels.father!)
-        if (!father) throw new Error('Father not found')
-        if (!father.rels.children) throw new Error('Father has no children')
-        father.rels.children = father.rels.children.filter(id => id !== datum.id)
-        rels.father = undefined
-        onAccept()
-      }
-  
-      function handleMotherRemoval() {
-        const mother = store.getDatum(rels.mother!)
-        if (!mother) throw new Error('Mother not found')
-        if (!mother.rels.children) throw new Error('Mother has no children')
-        mother.rels.children = mother.rels.children.filter(id => id !== datum.id)
-        rels.mother = undefined
+      function handleParentRemoval() {
+        const rel_id = rel_tree_datum.data.id
+        const parent = store.getDatum(rel_id)
+        if (!parent) throw new Error('Parent not found')
+        if (!parent.rels.children) throw new Error('Parent has no children')
+        parent.rels.children = parent.rels.children.filter(id => id !== datum.id)
+        rels.parents = rels.parents.filter(id => id !== rel_id)
         onAccept()
       }
   
@@ -95,8 +86,7 @@ export class RemoveRelative {
           return children.some(ch_id => {
             const child = store.getDatum(ch_id)
             if (!child) throw new Error('Child not found')
-            if (child.rels.father === spouse.id) return true
-            if (child.rels.mother === spouse.id) return true
+            if (child.rels.parents.includes(spouse.id)) return true
             return false
           })
         }
@@ -134,8 +124,7 @@ export class RemoveRelative {
           (rels.children || []).forEach(id => {
             const child = store.getDatum(id)
             if (!child) throw new Error('Child not found')
-            if (child.rels.father === other_parent.id) child.rels.father = undefined
-            if (child.rels.mother === other_parent.id) child.rels.mother = undefined
+            if (child.rels.parents.includes(other_parent.id)) child.rels.parents = child.rels.parents.filter(id => id !== other_parent.id)
           })
           if (other_parent.rels.children) {
             other_parent.rels.children = other_parent.rels.children.filter(ch_id => !(childrens_parent.rels.children || []).includes(ch_id))
@@ -147,15 +136,13 @@ export class RemoveRelative {
       function handleChildrenRemoval() {
         if (!rels.children) throw new Error('Children not found')
         rels.children = rels.children.filter(id => id !== rel_tree_datum.data.id)
-        const datum_rel_type = rel_tree_datum.data.rels.father === datum.id ? 'father' : 'mother'
-        rel_tree_datum.data.rels[datum_rel_type] = undefined
+        rel_tree_datum.data.rels.parents = rel_tree_datum.data.rels.parents.filter(id => id !== datum.id)
         onAccept()
       }
   
       function findRelType(d: TreeDatum) {
         if (d.is_ancestry) {
-          if (datum.rels.father === d.data.id) return 'father'
-          if (datum.rels.mother === d.data.id) return 'mother'
+          if (datum.rels.parents.includes(d.data.id)) return 'parent'
         } 
         else if (d.spouse) {
           if (!datum.rels.spouses) throw new Error('Spouses not found')

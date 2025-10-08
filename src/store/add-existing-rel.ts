@@ -4,8 +4,9 @@ export function handleLinkRel(updated_datum: Datum, link_rel_id: Datum['id'], st
   const new_rel_id = updated_datum.id
 
   store_data.forEach(d => {
-    if (d.rels.father === new_rel_id) d.rels.father = link_rel_id
-    if (d.rels.mother === new_rel_id) d.rels.mother = link_rel_id
+    if (d.rels.parents.includes(new_rel_id)) {
+      d.rels.parents[d.rels.parents.indexOf(new_rel_id)] = link_rel_id
+    }
     if (d.rels.spouses && d.rels.spouses.includes(new_rel_id)) {
       d.rels.spouses = d.rels.spouses.filter(id => id !== new_rel_id)
       if (!d.rels.spouses.includes(link_rel_id)) d.rels.spouses.push(link_rel_id)
@@ -29,11 +30,28 @@ export function handleLinkRel(updated_datum: Datum, link_rel_id: Datum['id'], st
     if (!link_rel.rels.spouses.includes(spouse_id)) link_rel.rels.spouses.push(spouse_id)
   })
 
-  if (link_rel.rels.father && new_rel.rels.father) console.error('link rel already has father')
-  if (link_rel.rels.mother && new_rel.rels.mother) console.error('link rel already has mother')
-
-  if (new_rel.rels.father) link_rel.rels.father = new_rel.rels.father
-  if (new_rel.rels.mother) link_rel.rels.mother = new_rel.rels.mother
+  if (link_rel.rels.parents.length === 0) {
+    link_rel.rels.parents = [...new_rel.rels.parents]
+  } else {
+    const link_rel_father = link_rel.rels.parents.find(id => store_data.find(d => d.id === id)?.data.gender === "M")
+    const link_rel_mother = link_rel.rels.parents.find(id => store_data.find(d => d.id === id)?.data.gender === "F")
+    const new_rel_father = new_rel.rels.parents.find(id => store_data.find(d => d.id === id)?.data.gender === "M")
+    const new_rel_mother = new_rel.rels.parents.find(id => store_data.find(d => d.id === id)?.data.gender === "F")
+    if (new_rel_father) {
+      if (link_rel_father) {
+        console.error('link rel already has father')
+        link_rel.rels.parents[link_rel.rels.parents.indexOf(link_rel_father)] = new_rel_father
+      }
+      else link_rel.rels.parents.push(new_rel_father)
+    }
+    if (new_rel_mother) {
+      if (link_rel_mother) {
+        console.error('link rel already has mother')
+        link_rel.rels.parents[link_rel.rels.parents.indexOf(link_rel_mother)] = new_rel_mother
+      }
+      else link_rel.rels.parents.push(new_rel_mother)
+    }
+  }
 
   store_data.splice(store_data.findIndex(d => d.id === new_rel_id), 1)
 }
@@ -59,8 +77,7 @@ export function getLinkRelOptions(datum: Datum, data: Data) {
     return ancestry_ids
 
     function loopCheck(d: Datum) {
-      const parents = [d.rels.father, d.rels.mother]
-      parents.forEach(p_id => {
+      d.rels.parents.forEach(p_id => {
         if (p_id) {
           ancestry_ids.push(p_id)
           const parent = data_stash.find(d => d.id === p_id)

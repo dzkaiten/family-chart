@@ -136,7 +136,7 @@ export function handleDuplicateHierarchyProgeny(root, data_stash, on_toggle_one_
     const p1 = d;
     (d.children || []).forEach(child => {
       const ch_rels = child.data.rels
-      const p2_id = ch_rels.father === p1.data.id ? ch_rels.mother : ch_rels.father
+      const p2_id = ch_rels.parents[0] === p1.data.id ? ch_rels.parents[1] : ch_rels.parents[0]
       if (!children_by_spouse[p2_id]) children_by_spouse[p2_id] = []
       children_by_spouse[p2_id].push(child)
     })

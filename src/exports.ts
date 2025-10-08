@@ -1,6 +1,6 @@
 export type * from './types/index'
 
-export { default as calculateTree } from "./layout/calculate-tree"
+// export { default as calculateTree } from "./layout/calculate-tree"  // handled in deprecated section
 export { default as createStore } from "./store/store"
 export { default as view } from "./renderers/view"
 export { default as createSvg } from "./renderers/svg"
@@ -12,10 +12,14 @@ export { default as createChart } from './core/chart'
 export { default as cardSvg } from './core/cards/card-svg'
 export { default as cardHtml } from './core/cards/card-html'
 
+export { convertV1toV2 } from "./store/convert-data"
+
 
 
 // deprecated
 export { CalculateTree } from "./layout/calculate-tree"
+
+export { calculateTreeWithV1Data as calculateTree } from "./layout/calculate-tree"
 
 export { Card } from './renderers/card-svg/card-svg'
 

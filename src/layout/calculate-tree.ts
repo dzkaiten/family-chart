@@ -112,8 +112,11 @@ export default function calculateTree(data: Data, {
 
     function hasCh(d:HN) {return !!d.children}
     function sameParent(a:HN, b:HN) {return a.parent == b.parent}
-    function sameBothParents(a:HN, b:HN) {return (a.data.rels.father === b.data.rels.father) && (a.data.rels.mother === b.data.rels.mother)}
-    function someChildren(a:HN, b:HN) {return hasCh(a) || hasCh(b)}
+    function sameBothParents(a: HN, b: HN) {
+      const parentsA = [...a.data.rels.parents].sort();
+      const parentsB = [...b.data.rels.parents].sort();
+      return parentsA.length === parentsB.length && parentsA.every((p, i) => p === parentsB[i]);
+    }
     function hasSpouses(d:HN) {return d.data.rels.spouses && d.data.rels.spouses.length > 0}
     function someSpouses(a:HN, b:HN) {return hasSpouses(a) || hasSpouses(b)}
 
@@ -127,7 +130,11 @@ export default function calculateTree(data: Data, {
     }
 
     function hierarchyGetterParents(d:Datum) {
-      return [d.rels.father, d.rels.mother]
+      let parents = [...d.rels.parents]
+      const p1 = data_stash.find(d => d.id === parents[0])
+      if (p1 && p1.data.gender === "F") parents.reverse()
+
+      return parents
         .filter(d => d).map(id => data_stash.find(d => d.id === id)).filter(d => d !== undefined)
     }
 
@@ -203,7 +210,7 @@ export default function calculateTree(data: Data, {
       if (d.added) return
       if (d.sibling) return
       const p1 = d.parent
-      const p2 = (p1?.spouses || []).find((d0:TreeDatum) => d0.data.id === d.data.rels.father || d0.data.id === d.data.rels.mother)
+      const p2 = (p1?.spouses || []).find((d0:TreeDatum) => d.data.rels.parents.includes(d0.data.id))
       if (p1 && p2) {
         if (!p1.added && !p2.added) console.error('no added spouse', p1, p2)
         const added_spouse = p1.added ? p1 : p2
@@ -263,19 +270,18 @@ export default function calculateTree(data: Data, {
       const d = data[i];
       if (d.rels.children && d.rels.children.length > 0) {
         if (!d.rels.spouses) d.rels.spouses = []
-        const is_father = d.data.gender === "M"
         let to_add_spouse:Datum | undefined
 
         d.rels.children.forEach(d0 => {
           const child = data.find(d1 => d1.id === d0) as Datum
-          if (child.rels[is_father ? 'father' : 'mother'] !== d.id) return
-          if (child.rels[!is_father ? 'father' : 'mother']) return
+          if (child.rels.parents.length === 2) return
           if (!to_add_spouse) {
             to_add_spouse = findOrCreateToAddSpouse(d)
           }
           if (!to_add_spouse.rels.children) to_add_spouse.rels.children = []
           to_add_spouse.rels.children.push(child.id)
-          child.rels[!is_father ? 'father' : 'mother'] = to_add_spouse.id
+          if (child.rels.parents.length !== 1) throw new Error('child has more than 1 parent')
+          child.rels.parents.push(to_add_spouse.id)
         })
       }
     }
@@ -288,10 +294,10 @@ export default function calculateTree(data: Data, {
     }
 
     function createToAddSpouse(d:Datum) {
-      const spouse:Datum = createNewPerson({
+      const spouse = createNewPerson({
         data: {gender: d.data.gender === "M" ? "F" : "M"},
-        rels: {spouses: [d.id], children: []}
-      });
+        rels: {spouses: [d.id], children: [], parents: []}
+      }) as Datum
       spouse.to_add = true;
       to_add_spouses.push(spouse);
       if (!d.rels.spouses) d.rels.spouses = []
@@ -319,38 +325,6 @@ export default function calculateTree(data: Data, {
       }
     }
   }
-
-  // function setupFromTo(tree:TreeDatum[]) {  // delete
-  //   tree.forEach(d => {
-  //     if (d.data.main) {
-  //       d.to_ancestry = d.parents
-  //     } else if (d.is_ancestry) {
-  //       d.from = [d.parent]
-  //       d.to = d.parents
-  //     } else {
-  //       if (d.added) {
-  //         d.from_spouse = d.spouse
-  //         return
-  //       }
-  //       if (d.sibling) return
-  //       const p1 = d.parent
-  //       const p2 = (d.parent?.spouses || []).find((d0:TreeDatum) => d0.data.id === d.data.rels.father || d0.data.id === d.data.rels.mother)
-
-  //       d.from = [p1]
-  //       if (p2) d.from.push(p2)
-
-  //       if (p1) {
-  //         if (!p1.to) p1.to = []
-  //         p1.to.push(d)
-  //       }
-
-  //       if (p2) {
-  //         if (!p2.to) p2.to = []
-  //         p2.to.push(d)
-  //       }
-  //     }
-  //   })
-  // }
   
   function handleDuplicateHierarchy(root:HN, data_stash:Data, is_ancestry:boolean) {
     if (is_ancestry) handleDuplicateHierarchyAncestry(root, on_toggle_one_close_others)
@@ -384,5 +358,19 @@ function setupTid(tree:TreeDatum[]) {
  * @deprecated Use f3.calculateTree instead
  */
 export function CalculateTree(options: CalculateTreeOptions & {data: Data}) {
-  return calculateTree(options.data, options)
+  return calculateTreeWithV1Data(options.data, options)
+}
+
+import { convertV1toV2 } from "../store/convert-data";
+
+/**
+ * Calculate the tree with v1 data
+ * @param data - The data for the tree
+ * @param options - The options for the tree
+ * @returns The tree
+ */
+
+export function calculateTreeWithV1Data(data: Data, options: CalculateTreeOptions) {
+  convertV1toV2(data);
+  return calculateTree(data, options)
 }

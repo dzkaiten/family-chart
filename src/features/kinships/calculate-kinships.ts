@@ -32,14 +32,12 @@ export function calculateKinships(d_id: Datum['id'], data_stash: Data, kinship_i
     const datum = data_stash.find(d => d.id === d_id)!
     const rels = datum.rels
     if (kinship === 'self') {
-      loopCheck(rels.father!, 'parent', depth - 1, d_id);
-      loopCheck(rels.mother!, 'parent', depth - 1, d_id);
+      rels.parents.forEach(p_id => loopCheck(p_id, 'parent', depth - 1, d_id));
       (rels.spouses || []).forEach(id => loopCheck(id, 'spouse', depth));
       (rels.children || []).forEach(id => loopCheck(id, 'child', depth + 1));
     }
     else if (kinship === 'parent') {
-      loopCheck(rels.father!, 'grandparent', depth - 1, d_id);
-      loopCheck(rels.mother!, 'grandparent', depth - 1, d_id);
+      rels.parents.forEach(p_id => loopCheck(p_id, 'grandparent', depth - 1, d_id));
       (rels.children || []).forEach(id => {
         if (prev_rel_id && prev_rel_id === id) return
         loopCheck(id, 'sibling', depth+1)
@@ -56,8 +54,7 @@ export function calculateKinships(d_id: Datum['id'], data_stash: Data, kinship_i
     }
     else if (kinship === 'grandparent') {
       if (!prev_rel_id) console.error(`${kinship} should have prev_rel_id`)
-      loopCheck(rels.father!, 'great-grandparent', depth - 1, d_id);
-      loopCheck(rels.mother!, 'great-grandparent', depth - 1, d_id);
+      rels.parents.forEach(p_id => loopCheck(p_id, 'great-grandparent', depth - 1, d_id));
       (rels.children || []).forEach(id => {
         if (prev_rel_id && prev_rel_id === id) return
         loopCheck(id, 'uncle', depth + 1)
@@ -68,8 +65,7 @@ export function calculateKinships(d_id: Datum['id'], data_stash: Data, kinship_i
     }
     else if (kinship.includes('great-grandparent')) {
       if (!prev_rel_id) console.error(`${kinship} should have prev_rel_id`)
-      loopCheck(rels.father!, getGreatKinship(kinship, depth - 1), depth - 1, d_id);
-      loopCheck(rels.mother!, getGreatKinship(kinship, depth - 1), depth - 1, d_id);
+      rels.parents.forEach(p_id => loopCheck(p_id, getGreatKinship(kinship, depth - 1), depth - 1, d_id));
       (rels.children || []).forEach(id => {
         if (prev_rel_id && prev_rel_id === id) return
         const great_count = getGreatCount(depth + 1)
@@ -137,8 +133,7 @@ export function calculateKinships(d_id: Datum['id'], data_stash: Data, kinship_i
 
       if (kinship === 'spouse') {
         const siblings: Datum['id'][] = [];
-        if (datum.rels.mother) (getD(datum.rels.mother)!.rels.children || []).forEach(d_id => siblings.push(d_id))
-        if (datum.rels.father) (getD(datum.rels.father)!.rels.children || []).forEach(d_id => siblings.push(d_id))
+        datum.rels.parents.forEach(p_id => (getD(p_id)!.rels.children || []).forEach(d_id => siblings.push(d_id)))
         siblings.forEach(sibling_id => {if (!kinships[sibling_id]) kinships[sibling_id] = 'sibling-in-law'})  // gender label is added in setupKinshipsGender
       }
 
@@ -225,8 +220,7 @@ export function findSameAncestor(main_id: Datum['id'], rel_id: Datum['id'], data
       is_half_kin = checkIfHalfKin(parents, found_parent)
       return
     }
-    if (rels.father) loopCheck(rels.father)
-    if (rels.mother) loopCheck(rels.mother)
+    rels.parents.forEach(p_id => loopCheck(p_id))
   }
 
   type AncestryTuple = [Datum['id'], Datum['id']]
@@ -239,13 +233,12 @@ export function findSameAncestor(main_id: Datum['id'], rel_id: Datum['id'], data
       const d = data_stash.find(d => d.id === rel_id)!
       const rels = d.rels
       ancestry.push(getParents(rels))
-      if (rels.father) loopAdd(rels.father)
-      if (rels.mother) loopAdd(rels.mother)
+      rels.parents.forEach(p_id => loopAdd(p_id))
     }
   }
   
   function getParents(rels: Datum['rels']): AncestryTuple {
-    return [rels.father!, rels.mother!]
+    return rels.parents as AncestryTuple
   }
 
   function checkIfRel(rel_id: Datum['id']) {
@@ -267,7 +260,7 @@ export function findSameAncestor(main_id: Datum['id'], rel_id: Datum['id'], data
 
 
   function checkIfHalfKin(ancestors1: AncestryTuple, ancestors2: AncestryTuple) {
-    return ancestors1[0] !== ancestors2[0] || ancestors1[1] !== ancestors2[1]
+    return ancestors1.some((p, i) => p !== ancestors2[i]) || ancestors2.some((p, i) => p !== ancestors1[i])
   }
 }
 

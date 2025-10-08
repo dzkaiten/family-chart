@@ -1,5 +1,5 @@
 import * as d3 from "d3"
-import {cardChangeMain, cardShowHideRels} from "./methods"
+import {cardChangeMain} from "./methods"
 import {
   CardBody,
   CardImage,
@@ -12,7 +12,6 @@ import { CardDim } from "./templates"
 
 const CardElements = {
   miniTree,
-  lineBreak,
   cardBody,
   cardImage
 }
@@ -30,14 +29,6 @@ function miniTree(d: TreeDatum, props: {card_dim: CardDim, onMiniTreeClick?: (e:
     if (props.onMiniTreeClick) props.onMiniTreeClick.call(this, e, d)
     else cardChangeMain(props.store, {d})
   })
-  return g.node()
-}
-
-function lineBreak(d: TreeDatum, props: {card_dim: CardDim, onLineBreakClick?: (e: MouseEvent, d: TreeDatum) => void, store: Store}) {
-  if (d.data.to_add) return
-  const card_dim = props.card_dim;
-  const g = d3.create('svg:g').html(LinkBreakIconWrapper({d,card_dim}).template)
-  g.on("click", (e) => {e.stopPropagation();cardShowHideRels(props.store, {d})})
   return g.node()
 }
 

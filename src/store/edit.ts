@@ -58,9 +58,7 @@ export function deletePerson(datum: Datum, data_stash: Data, clean_to_add: boole
       for (let k in d.rels) {
         if (!d.rels.hasOwnProperty(k)) continue
         const key = k as keyof Datum['rels'];
-        if (d.rels[key] === datum.id) {
-          delete d.rels[key]
-        } else if (Array.isArray(d.rels[key]) && d.rels[key].includes(datum.id)) {
+        if (Array.isArray(d.rels[key]) && d.rels[key].includes(datum.id)) {
           d.rels[key].splice(d.rels[key].findIndex(did => did === datum.id), 1)
         }
       }

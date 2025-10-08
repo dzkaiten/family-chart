@@ -3,7 +3,7 @@ import { Data, Datum } from "../types/data"
 type RelType = 'daughter' | 'son' | 'mother' | 'father' | 'spouse'
 
 export function createNewPerson({data, rels}: {data: Datum['data'], rels?: Datum['rels']}) {
-  return {id: generateUUID(), data: data || {}, rels: rels || {}}
+  return {id: generateUUID(), data: data || {}, rels: rels || {parents: [], children: [], spouses: []}}
 }
 
 export function createNewPersonWithGenderFromRel({data, rel_type, rel_datum}: {data: Datum['data'], rel_type: RelType, rel_datum: Datum}) {

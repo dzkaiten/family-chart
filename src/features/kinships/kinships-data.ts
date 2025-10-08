@@ -37,6 +37,7 @@ export function getKinshipsDataStash(main_id: Datum['id'], rel_id: Datum['id'], 
       data: JSON.parse(JSON.stringify(d.data.data)),
       kinship: kinships[d.data.id],
       rels: {
+        parents: [],
         spouses: [],
         children: []
       }
@@ -74,14 +75,12 @@ export function getKinshipsDataStash(main_id: Datum['id'], rel_id: Datum['id'], 
     function loopAdd(d_id: Datum['id']) {
       const d = data_stash.find(d => d.id === d_id)!
       const rels = d.rels
-      if (same_ancestor_progeny.includes(rels.mother!)) {
-        ancestry.push(rels.mother!)
-        loopAdd(rels.mother!)
-      }
-      if (same_ancestor_progeny.includes(rels.father!)) {
-        ancestry.push(rels.father!)
-        loopAdd(rels.father!)
-      }
+      rels.parents.forEach(p_id => {
+        if (same_ancestor_progeny.includes(p_id)) {
+          ancestry.push(p_id)
+          loopAdd(p_id)
+        }
+      })
     }
   }
 
@@ -97,7 +96,8 @@ export function getKinshipsDataStash(main_id: Datum['id'], rel_id: Datum['id'], 
       kinship: kinships[spouse.id],
       rels: {
         spouses: [datum.id],
-        children: datum.rels.children
+        children: datum.rels.children,
+        parents: []
       }
     }
     kinship_data_stash.push(spouse_datum);
@@ -105,8 +105,7 @@ export function getKinshipsDataStash(main_id: Datum['id'], rel_id: Datum['id'], 
     (datum.rels.children || []).forEach(child_id => {
       const child = data_stash.find(d => d.id === child_id)!
       const kinship_child = kinship_data_stash.find(d => d.id === child_id)!
-      kinship_child.rels.father = child.rels.father
-      kinship_child.rels.mother = child.rels.mother
+      kinship_child.rels.parents = [...child.rels.parents]
     })
   }
 
@@ -130,7 +129,8 @@ export function getKinshipsDataStash(main_id: Datum['id'], rel_id: Datum['id'], 
       kinship: kinships[spouse.id],
       rels: {
         spouses: [datum.id],
-        children: []
+        children: [],
+        parents: []
       }
     }
     kinship_data_stash.push(spouse_datum);
@@ -146,13 +146,13 @@ export function getKinshipsDataStash(main_id: Datum['id'], rel_id: Datum['id'], 
       kinship: kinships[in_law_id!],
       rels: {
         spouses: [],
-        children: []
+        children: [],
+        parents: []
       }
     })
 
     const siblings: Datum['id'][] = []
-    if (in_law_datum.rels.mother) (getD(in_law_datum.rels.mother)!.rels.children || []).forEach(d_id => siblings.push(d_id))
-    if (in_law_datum.rels.father) (getD(in_law_datum.rels.father)!.rels.children || []).forEach(d_id => siblings.push(d_id))
+    in_law_datum.rels.parents.forEach(p_id => (getD(p_id)!.rels.children || []).forEach(d_id => siblings.push(d_id)))
     
     const spouse_id = getD(rel_id)!.rels.spouses?.find(d_id => siblings.includes(d_id))
     datum.rels.spouses = [spouse_id!]
@@ -163,41 +163,29 @@ export function getKinshipsDataStash(main_id: Datum['id'], rel_id: Datum['id'], 
       kinship: kinships[spouse.id],
       rels: {
         spouses: [datum.id],
-        children: []
+        children: [],
+        parents: []
       }
     }
     kinship_data_stash.push(spouse_datum);
 
-    if (in_law_datum.rels.father) {
-      const father_id = in_law_datum.rels.father
-      const father = getD(father_id)!
-      const father_datum: DatumKinship = {
-        id: father.id,
-        data: JSON.parse(JSON.stringify(father.data)),
-        kinship: 'Father-in-law',
+    in_law_datum.rels.parents.forEach(p_id => {
+      const parent = getD(p_id)!
+      const kinship_label = parent.data.gender === 'M' ? 'Father-in-law' : parent.data.gender === 'F' ? 'Mother-in-law' : 'Parent-in-law'
+      const parent_datum: DatumKinship = {
+        id: parent.id,
+        data: JSON.parse(JSON.stringify(parent.data)),
+        kinship: kinship_label,
         rels: {
           spouses: [],
-          children: [spouse_id!, in_law_id!]
+          children: [spouse_id!, in_law_id!],
+          parents: []
         }
       }
-      if (in_law_datum.rels.mother) {father_datum.rels.spouses!.push(in_law_datum.rels.mother)}
-      kinship_data_stash.unshift(father_datum);
-    }
-    if (in_law_datum.rels.mother) {
-      const mother_id = in_law_datum.rels.mother
-      const mother = getD(mother_id)!
-      const mother_datum: DatumKinship = {
-        id: mother.id,
-        data: JSON.parse(JSON.stringify(mother.data)),
-        kinship: 'Mother-in-law',
-        rels: {
-          spouses: [],
-          children: [spouse_id!, in_law_id!]
-        }
-      }
-      if (in_law_datum.rels.father) {mother_datum.rels.spouses!.push(in_law_datum.rels.father)}
-      kinship_data_stash.unshift(mother_datum);
-    }
+      const p2_id = in_law_datum.rels.parents.find(p_id => p_id !== p_id)
+      if (p2_id) parent_datum.rels.parents.push(p2_id)
+      kinship_data_stash.unshift(parent_datum);
+    })
   }
 
   function getD(d_id: Datum['id']) {
