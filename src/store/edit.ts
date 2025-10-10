@@ -39,16 +39,17 @@ export function moveToAddToAdded(datum: Datum, data_stash: Data) {
 }
 
 export function removeToAdd(datum: Datum, data_stash: Data) {
-  deletePerson(datum, data_stash)
+  deletePerson(datum, data_stash, false)
   return false
 }
 
-export function deletePerson(datum: Datum, data_stash: Data) {
+export function deletePerson(datum: Datum, data_stash: Data, clean_to_add: boolean = true) {
   if (!checkIfRelativesConnectedWithoutPerson(datum, data_stash)) {
     changeToUnknown()
     return {success: true}
   } else {
     executeDelete()
+    if (clean_to_add) removeToAddFromData(data_stash)
     return {success: true};
   }
 

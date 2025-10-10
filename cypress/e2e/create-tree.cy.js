@@ -276,6 +276,26 @@ describe('Create simple trees', () => {
     }
   })
 
+  it('Add parent, then delete it, and check if ADD cards are deleted', () => {
+    cy.visit(create_tree_url)
+    testFn()
+
+
+    function testFn() {
+      addRelative('Name', 'father', 'Zen')
+
+      getCardByName('Name').click()
+
+      cy.get('#FamilyChart .card').contains('ADD').should('have.length', 1)
+      
+      deleteCardByName('Zen')
+
+      cy.get('#FamilyChart .card').contains('ADD').should('not.exist')
+
+      closeAddRelativeButton()
+    }
+  })
+
   it('Change gender of main should change gender of spouse', () => {
     cy.visit(create_tree_url)
     testFn()
