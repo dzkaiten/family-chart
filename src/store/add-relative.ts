@@ -56,13 +56,13 @@ export function addDatumRelsPlaceholders(
     const parents = datum.rels.parents
     const father = parents.find(d_id => store_data.find(d => d.id === d_id)?.data.gender === "M")
     const mother = parents.find(d_id => store_data.find(d => d.id === d_id)?.data.gender === "F")
-    if (!father) {
+    if (parents.length < 2 && !father) {
       const father: NewDatum = createNewPerson({data: {gender: "M"}, rels: {children: [datum.id], parents: []}})
       father._new_rel_data = {rel_type: "father", label: addRelLabels.father, rel_id: datum.id}
       datum.rels.parents.push(father.id)
       store_data.push(father)
     }
-    if (!mother) {
+    if (parents.length < 2 && !mother) {
       const mother: NewDatum = createNewPerson({data: {gender: "F"}, rels: {children: [datum.id], parents: []}})
       mother._new_rel_data = {rel_type: "mother", label: addRelLabels.mother, rel_id: datum.id}
       datum.rels.parents.push(mother.id)
