@@ -57,13 +57,13 @@ export function addDatumRelsPlaceholders(
     const father = parents.find(d_id => store_data.find(d => d.id === d_id)?.data.gender === "M")
     const mother = parents.find(d_id => store_data.find(d => d.id === d_id)?.data.gender === "F")
     if (parents.length < 2 && !father) {
-      const father: NewDatum = createNewPerson({data: {gender: "M"}, rels: {children: [datum.id], parents: []}})
+      const father: NewDatum = createNewPerson({data: {gender: "M"}, rels: {children: [datum.id]}})
       father._new_rel_data = {rel_type: "father", label: addRelLabels.father, rel_id: datum.id}
       datum.rels.parents.push(father.id)
       store_data.push(father)
     }
     if (parents.length < 2 && !mother) {
-      const mother: NewDatum = createNewPerson({data: {gender: "F"}, rels: {children: [datum.id], parents: []}})
+      const mother: NewDatum = createNewPerson({data: {gender: "F"}, rels: {children: [datum.id]}})
       mother._new_rel_data = {rel_type: "mother", label: addRelLabels.mother, rel_id: datum.id}
       datum.rels.parents.push(mother.id)
       store_data.push(mother)
@@ -91,7 +91,7 @@ export function addDatumRelsPlaceholders(
         if (child.rels.parents.length === 1) {
           const p1 = store_data.find(d => d.id === child.rels.parents[0])!
           const new_spouse_gender = p1.data.gender === "M" ? "F" : "M"
-          if (!new_spouse) new_spouse = createNewPerson({data: {gender: new_spouse_gender}, rels: {spouses: [datum.id], children: [], parents: []}})
+          if (!new_spouse) new_spouse = createNewPerson({data: {gender: new_spouse_gender}, rels: {spouses: [datum.id]}})
           new_spouse._new_rel_data = {rel_type: "spouse", label: addRelLabels.spouse, rel_id: datum.id}
           new_spouse.rels.children!.push(child.id)
           datum.rels.spouses!.push(new_spouse.id)
@@ -106,7 +106,7 @@ export function addDatumRelsPlaceholders(
   function addSpouse() {
     if (!datum.rels.spouses) datum.rels.spouses = []
     const spouse_gender = datum.data.gender === "M" ? "F" : "M"
-    const new_spouse: NewDatum = createNewPerson({data: {gender: spouse_gender}, rels: {spouses: [datum.id], parents: []}})
+    const new_spouse: NewDatum = createNewPerson({data: {gender: spouse_gender}, rels: {spouses: [datum.id]}})
     new_spouse._new_rel_data = {rel_type: "spouse", label: addRelLabels.spouse, rel_id: datum.id}
     datum.rels.spouses.push(new_spouse.id)
     store_data.push(new_spouse)

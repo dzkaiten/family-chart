@@ -24,7 +24,7 @@ const data = [
   {
     "id": "3",
     "data": {"first name": "Bob", "last name": "Doe", "birthday": "2005", "gender": "M"},
-    "rels": {"father": "1", "mother": "2"}
+    "rels": {"parents": ["1", "2"]}
   }
 ];
 

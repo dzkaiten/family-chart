@@ -296,7 +296,7 @@ export default function calculateTree(data: Data, {
     function createToAddSpouse(d:Datum) {
       const spouse = createNewPerson({
         data: {gender: d.data.gender === "M" ? "F" : "M"},
-        rels: {spouses: [d.id], children: [], parents: []}
+        rels: {spouses: [d.id]}
       }) as Datum
       spouse.to_add = true;
       to_add_spouses.push(spouse);

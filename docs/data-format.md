@@ -20,10 +20,9 @@ const data = [
       // Add any additional properties you need
     },
     "rels": {                    // Relationships (required)
-      "father": "father-id",     // Father's ID (optional)
-      "mother": "mother-id",     // Mother's ID (optional)
-      "spouses": ["spouse1-id", "spouse2-id"], // Array of spouse IDs (optional)
-      "children": ["child1-id", "child2-id"]   // Array of children IDs (optional)
+      "parents": ["parent-id-1", "parent-id-2"], // Array of parent IDs (optional)
+      "spouses": ["spouse1-id", "spouse2-id"],   // Array of spouse IDs (optional)
+      "children": ["child1-id", "child2-id"]     // Array of children IDs (optional)
     }
   }
 ]
@@ -52,13 +51,10 @@ const data = [
 
 ## Relationship Properties (all optional)
 
-### `father` (string, optional)
-- ID of the person's father
-- Must reference an existing person's ID
-
-### `mother` (string, optional)
-- ID of the person's mother
-- Must reference an existing person's ID
+### `parents` (array, optional)
+- Array of parent IDs
+- Supports one or two parents
+- Each ID must reference an existing person
 
 ### `spouses` (array, optional)
 - Array of spouse IDs
@@ -89,8 +85,7 @@ You can add any custom properties to the `data` object. Common examples include:
     "nationality": "American"
   },
   "rels": {
-    "father": "2",
-    "mother": "3",
+    "parents": ["2", "3"]
     "spouses": ["4"],
     "children": ["5", "6"]
   }
@@ -129,8 +124,7 @@ const familyData = [
     "id": "3",
     "data": {"first name": "Bob", "last name": "Doe", "birthday": "2005", "gender": "M"},
     "rels": {
-      "father": "1",
-      "mother": "2"
+      "parents": ["1", "2"]
     }
   }
 ]
@@ -144,4 +138,4 @@ The best way to start is to use the [visual builder](https://donatso.github.io/f
 ### Bidirectional Relationships
 For each relationship, both persons must have a record of it:
 - If John has spouse Jane, then Jane must have John's ID in her `rels.spouses` array
-- If Bob has mother Jane and father John, then both parents must have Bob's ID in their `rels.children` array
+- If Bob has parents Jane and John, then both parents must have Bob's ID in their `rels.children` array

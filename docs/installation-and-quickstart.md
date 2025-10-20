@@ -54,7 +54,7 @@ const data = [
   {
     "id": "3",
     "data": {"first name": "Bob", "last name": "Doe", "birthday": "2005", "gender": "M"},
-    "rels": {"father": "1", "mother": "2"}
+    "rels": {"parents": ["1", "2"]}
   }
 ]
 
@@ -94,7 +94,7 @@ const data = [
   {
     "id": "3",
     "data": {"first name": "Bob", "last name": "Doe", "birthday": "2005", "gender": "M"},
-    "rels": {"father": "1", "mother": "2"}
+    "rels": {"parents": ["1", "2"]}
   }
 ];
 
@@ -137,7 +137,7 @@ export default {
       {
         "id": "3",
         "data": {"first name": "Bob", "last name": "Doe", "birthday": "2005", "gender": "M"},
-        "rels": {"father": "1", "mother": "2"}
+        "rels": {"parents": ["1", "2"]}
       }
     ]
     const f3Chart = f3.createChart('#FamilyChart', data)
@@ -177,7 +177,7 @@ const FamilyTree = () => {
         {
           "id": "3",
           "data": {"first name": "Bob", "last name": "Doe", "birthday": "2005", "gender": "M"},
-          "rels": {"father": "1", "mother": "2"}
+          "rels": {"parents": ["1", "2"]}
         }
       ];
 
@@ -230,7 +230,7 @@ export class FamilyTreeComponent implements OnInit {
       {
         "id": "3",
         "data": {"first name": "Bob", "last name": "Doe", "birthday": "2005", "gender": "M"},
-        "rels": {"father": "1", "mother": "2"}
+        "rels": {"parents": ["1", "2"]}
       }
     ]
 
@@ -273,7 +273,7 @@ export class FamilyTreeComponent implements OnInit {
       {
         "id": "3",
         "data": {"first name": "Bob", "last name": "Doe", "birthday": "2005", "gender": "M"},
-        "rels": {"father": "1", "mother": "2"}
+        "rels": {"parents": ["1", "2"]}
       }
     ];
 
