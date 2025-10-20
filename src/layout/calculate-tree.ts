@@ -361,7 +361,8 @@ export function CalculateTree(options: CalculateTreeOptions & {data: Data}) {
   return calculateTreeWithV1Data(options.data, options)
 }
 
-import { convertV1toV2 } from "../store/convert-data";
+import { formatData } from "../store/format-data";
+import { LegacyDatum } from "../store/format-data";
 
 /**
  * Calculate the tree with v1 data
@@ -370,7 +371,7 @@ import { convertV1toV2 } from "../store/convert-data";
  * @returns The tree
  */
 
-export function calculateTreeWithV1Data(data: Data, options: CalculateTreeOptions) {
-  convertV1toV2(data);
-  return calculateTree(data, options)
+export function calculateTreeWithV1Data(data: LegacyDatum[], options: CalculateTreeOptions) {
+  const formatted_data = formatData(data);
+  return calculateTree(formatted_data, options)
 }

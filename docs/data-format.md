@@ -130,6 +130,66 @@ const familyData = [
 ]
 ```
 
+## Data Format Migration (v0.9.0+)
+<details>
+
+**Note**: This migration was introduced in version 0.9.0.
+
+### Legacy Format (Deprecated)
+
+The previous data format used separate `father` and `mother` properties instead of the unified `parents` array. This format is still supported for backward compatibility but is deprecated.
+
+**Legacy Format Example:**
+```javascript
+{
+  "id": "1",
+  "data": {"gender": "M", "name": "John"},
+  "rels": {
+    "father": "2",        // Single parent ID
+    "mother": "3",        // Single parent ID
+    "spouses": ["4"],
+    "children": ["5"]
+  }
+}
+```
+
+**Current Format (Recommended):**
+```javascript
+{
+  "id": "1", 
+  "data": {"gender": "M", "name": "John"},
+  "rels": {
+    "parents": ["2", "3"], // Array of parent IDs
+    "spouses": ["4"],
+    "children": ["5"]
+  }
+}
+```
+
+### Automatic Migration
+
+Family Chart automatically converts legacy data format to the new format:
+
+- `father` and `mother` properties are converted to `parents` array
+- The conversion preserves all relationship data
+- Original `father`/`mother` properties are removed after conversion
+- Migration happens transparently when data is loaded
+
+### Export Behavior
+
+The library maintains format consistency during export operations:
+
+- **Legacy Input → Legacy Output**: If you load data with `father`/`mother` properties, `f3EditTree.exportData()` will export it back with the same format
+- **New Input → New Output**: If you load data with `parents` array, exports will maintain the new format
+- **Format Detection**: The library automatically detects the input format and preserves it throughout the editing session
+
+This behavior ensures that:
+- Your data format remains consistent during editing
+- No unexpected format changes occur when saving/exporting
+- Legacy systems continue to work without modification
+
+</details>
+
 ## Tips for Data Preparation
 
 ### Use the Visual Builder

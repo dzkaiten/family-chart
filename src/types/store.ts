@@ -24,6 +24,7 @@ export interface StoreState extends CalculateTreeOptions {
   main_id: Datum['id'];
   main_id_history?: Datum['id'][];
   tree?: Tree;
+  legacy_format?: boolean;
 
   transition_time?: TransitionTime;
   single_parent_empty_card_label?: SingleParentEmptyCardLabel;

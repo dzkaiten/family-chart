@@ -1,23 +1,25 @@
 [
   {
     "id": "0",
-    "rels": {
-      "spouses": [
-        "8c92765f-92d3-4120-90dd-85a28302504c"
-      ],
-      "father": "0c09cfa0-5e7c-4073-8beb-94f6c69ada19",
-      "mother": "0fa5c6bc-5b58-40f5-a07e-d787e26d8b56",
-      "children": [
-        "ce2fcb9a-6058-4326-b56a-aced35168561",
-        "f626d086-e2d6-4722-b4f3-ca4f15b109ab"
-      ]
-    },
     "data": {
       "first name": "Agnus",
       "last name": "",
       "birthday": "1970",
       "avatar": "https://static8.depositphotos.com/1009634/988/v/950/depositphotos_9883921-stock-illustration-no-user-profile-picture.jpg",
       "gender": "M"
+    },
+    "rels": {
+      "spouses": [
+        "8c92765f-92d3-4120-90dd-85a28302504c"
+      ],
+      "children": [
+        "ce2fcb9a-6058-4326-b56a-aced35168561",
+        "f626d086-e2d6-4722-b4f3-ca4f15b109ab"
+      ],
+      "parents": [
+        "0c09cfa0-5e7c-4073-8beb-94f6c69ada19",
+        "0fa5c6bc-5b58-40f5-a07e-d787e26d8b56"
+      ]
     }
   },
   {
@@ -37,8 +39,10 @@
         "ce2fcb9a-6058-4326-b56a-aced35168561",
         "f626d086-e2d6-4722-b4f3-ca4f15b109ab"
       ],
-      "father": "d8897e67-db7c-4b72-ae7c-69aae266b140",
-      "mother": "9397093b-30bb-420b-966f-62596b58447f"
+      "parents": [
+        "d8897e67-db7c-4b72-ae7c-69aae266b140",
+        "9397093b-30bb-420b-966f-62596b58447f"
+      ]
     }
   },
   {
@@ -75,8 +79,10 @@
       "children": [
         "0"
       ],
-      "father": "12a9bddf-855a-4583-a695-c73fa8c0e9b2",
-      "mother": "bd56a527-b613-474d-9f38-fcac0aae218b"
+      "parents": [
+        "12a9bddf-855a-4583-a695-c73fa8c0e9b2",
+        "bd56a527-b613-474d-9f38-fcac0aae218b"
+      ]
     }
   },
   {
@@ -89,14 +95,16 @@
       "avatar": ""
     },
     "rels": {
-      "mother": "8c92765f-92d3-4120-90dd-85a28302504c",
-      "father": "0",
       "spouses": [
         "b4e33c68-20a7-47ba-9dcc-1168a07d5b52"
       ],
       "children": [
         "eabd40c9-4518-4485-af5e-e4bc3ffd27fb",
         "240a3f71-c921-42d7-8a13-dec5e1acc4fd"
+      ],
+      "parents": [
+        "0",
+        "8c92765f-92d3-4120-90dd-85a28302504c"
       ]
     }
   },
@@ -110,8 +118,10 @@
       "avatar": ""
     },
     "rels": {
-      "mother": "8c92765f-92d3-4120-90dd-85a28302504c",
-      "father": "0"
+      "parents": [
+        "0",
+        "8c92765f-92d3-4120-90dd-85a28302504c"
+      ]
     }
   },
   {
@@ -124,8 +134,10 @@
       "avatar": ""
     },
     "rels": {
-      "mother": "b4e33c68-20a7-47ba-9dcc-1168a07d5b52",
-      "father": "ce2fcb9a-6058-4326-b56a-aced35168561"
+      "parents": [
+        "ce2fcb9a-6058-4326-b56a-aced35168561",
+        "b4e33c68-20a7-47ba-9dcc-1168a07d5b52"
+      ]
     }
   },
   {
@@ -157,8 +169,10 @@
       "avatar": ""
     },
     "rels": {
-      "mother": "b4e33c68-20a7-47ba-9dcc-1168a07d5b52",
-      "father": "ce2fcb9a-6058-4326-b56a-aced35168561"
+      "parents": [
+        "ce2fcb9a-6058-4326-b56a-aced35168561",
+        "b4e33c68-20a7-47ba-9dcc-1168a07d5b52"
+      ]
     }
   },
   {

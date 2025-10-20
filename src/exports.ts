@@ -12,7 +12,7 @@ export { default as createChart } from './core/chart'
 export { default as cardSvg } from './core/cards/card-svg'
 export { default as cardHtml } from './core/cards/card-html'
 
-export { convertV1toV2 } from "./store/convert-data"
+export { formatData, formatDataForExport } from "./store/format-data"
 
 
 

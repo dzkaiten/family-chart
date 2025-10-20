@@ -1,6 +1,6 @@
 import calculateTree from "../layout/calculate-tree"
 import { Datum, Data } from "../types/data"
-import { convertV1toV2 } from "./convert-data"
+import { LegacyDatum, formatData } from "./format-data"
 import { TreeDatum } from "../types/treeData"
 import { Store, StoreState } from "../types/store"
 import { CalculateTreeOptions, Tree } from "../layout/calculate-tree"
@@ -13,7 +13,10 @@ export default function createStore(initial_state: StoreState): Store {
     ...initial_state,
   };
   state.main_id_history = []
-  if (state.data) convertV1toV2(state.data);
+  if (state.data) {
+    checkIfFmFormat(state.data)
+    formatData(state.data);
+  }
 
   const store = {
     state,
@@ -23,9 +26,10 @@ export default function createStore(initial_state: StoreState): Store {
       if (!state.main_id && state.tree) updateMainId(state.tree.main_id)
       if (onUpdate) onUpdate(props)
     },
-    updateData: (data: Data) => {
-      state.data = data;
-      convertV1toV2(data);
+    updateData: (data: Datum[] | LegacyDatum[]) => {
+      checkIfFmFormat(data)
+      formatData(data);
+      state.data = data as Data;
       validateMainId();
     },
     updateMainId,
@@ -123,5 +127,16 @@ export default function createStore(initial_state: StoreState): Store {
     const main_datum = getDatum(main_id);
     if (!main_datum) throw new Error("Main datum not found");
     return main_datum;
+  }
+
+  function checkIfFmFormat(data: LegacyDatum[]) {
+    if (state.legacy_format !== undefined) return  // already checked
+    for (let d of data) {
+      if (d.rels.father || d.rels.mother) {
+        state.legacy_format = true
+        return
+      }
+    }
+    state.legacy_format = false
   }
 }

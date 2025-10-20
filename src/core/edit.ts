@@ -15,6 +15,7 @@ import { AddRelative } from "./add-relative"
 import { EditDatumFormCreator, FormCreator, FormCreatorSetupProps, NewRelFormCreator } from "../types/form"
 import { CardHtml } from "./cards/card-html"
 import { CardSvg } from "./cards/card-svg"
+import { LegacyDatum, formatDataForExport } from "../store/format-data"
 
 type Card = CardHtml | CardSvg
 
@@ -39,7 +40,7 @@ export default (cont: HTMLElement, store: Store) => new EditTree(cont, store)
  * const f3EditTree = f3Chart.editTree()  // returns an EditTree instance
  *   .setFields(["first name","last name","birthday"])
  *   .setOnChange(() => {
- *      const updated_data = f3EditTree.getStoreDataCopy()
+ *      const updated_data = f3EditTree.exportData()
  *      // do something with the updated data
  *   })
  * ```
@@ -189,7 +190,7 @@ export class EditTree {
   }
 
   private createHistory() {
-    const history = createHistory(this.store, this.getStoreDataCopy.bind(this), historyUpdateTree.bind(this))
+    const history = createHistory(this.store, this._getStoreDataCopy.bind(this), historyUpdateTree.bind(this))
 
     const nav_cont = this.cont.querySelector('.f3-nav-cont') as HTMLElement
     if (!nav_cont) throw new Error("Nav cont not found")
@@ -477,19 +478,34 @@ export class EditTree {
     return this
   }
   
-  /**
-   * Get data copy
-   * @returns The store data
-   */
-  getStoreDataCopy() {
+  private _getStoreDataCopy() {
     let data = JSON.parse(JSON.stringify(this.store.getData()))  // important to make a deep copy of the data
     if (this.addRelativeInstance.is_active) data = this.addRelativeInstance.cleanUp(data)    
     data = cleanupDataJson(data)
     return data
   }
+
+  /**
+   * deprecated: use exportData instead. This function will be removed in a future version.
+   * Export the data
+   * @returns family chart data
+   */
+  getStoreDataCopy() {
+    return this.exportData()
+  }
+
+
+  /**
+   * @returns family chart data
+   */
+  exportData() {
+    let data = this._getStoreDataCopy()
+    data = formatDataForExport(data, this.store.state.legacy_format)
+    return data as Data | LegacyDatum[]
+  }
   
   getDataJson() {
-    return JSON.stringify(this.getStoreDataCopy(), null, 2)
+    return JSON.stringify(this.exportData(), null, 2)
   }
   
   updateHistory() {
