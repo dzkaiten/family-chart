@@ -56,7 +56,6 @@ export default function CardSvg(props: CardSvgProps) {
 
       if (props.img) appendElement(cardElements.cardImage(d, props)!, this.querySelector('.card')!)
       if (props.mini_tree) appendElement(cardElements.miniTree(d, props)!, this.querySelector('.card')!, true)
-      if (props.link_break) appendElement(cardElements.lineBreak(d, props)!, this.querySelector('.card')!)
     }
 
     if (props.onCardUpdate) props.onCardUpdate.call(this, d)
