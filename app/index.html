@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Family Tree</title>
+  <link rel="stylesheet" href="../src/styles/family-chart.css" />
+  <link rel="stylesheet" href="./src/styles.css" />
+</head>
+<body>
+  <div id="app">
+    <header class="app-header">
+      <h1 class="app-title">Family Tree</h1>
+      <div class="app-header-actions">
+        <select id="lang-toggle" class="lang-toggle" aria-label="Language">
+          <option value="en">English</option>
+          <option value="zh-Hant">中文 (繁體)</option>
+          <option value="zh-Hans">中文 (简体)</option>
+        </select>
+        <button id="admin-btn" class="btn btn-ghost hidden" type="button">
+          Pending <span id="admin-badge" class="badge hidden">0</span>
+        </button>
+        <button id="download-json-btn" class="btn btn-ghost hidden" type="button">Download JSON</button>
+        <button id="download-png-btn" class="btn btn-ghost hidden" type="button">Download PNG</button>
+        <button id="logout-btn" class="btn btn-ghost hidden" type="button">Log out</button>
+      </div>
+    </header>
+
+    <main id="view-root" class="view-root">
+      <!-- Views are rendered into this container by main.ts -->
+    </main>
+
+    <div id="toast-root" class="toast-root" aria-live="polite"></div>
+  </div>
+
+  <script type="module" src="./src/main.ts"></script>
+</body>
+</html>
