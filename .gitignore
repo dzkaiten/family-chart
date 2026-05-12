@@ -2,6 +2,9 @@
 /node_modules/
 /.idea/
 /.vscode/
+/.claude/
 /tests/debugging/
 cypress/screenshots
 docs/api
+.env
+.env.local
