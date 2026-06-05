@@ -101,15 +101,20 @@ export function mergePersonUpdate(
 ): PersonData {
   const baseNames: NamesMap = existing?.data.names ? { ...existing.data.names } : {};
 
-  // For every configured language, extract the first/last fields from the form
+  // For every configured language, extract the first/last fields from the form.
+  // A field that is present but empty is an explicit clear: drop that language
+  // entry rather than keeping a stale value. A field that is absent is left
+  // untouched (so partial form payloads don't wipe other languages).
   for (const { code } of LANGUAGES) {
     const firstKey = code === activeLanguage ? 'first_name' : `first_name__${code}`;
     const lastKey = code === activeLanguage ? 'last_name' : `last_name__${code}`;
+    const firstPresent = firstKey in formData;
+    const lastPresent = lastKey in formData;
+    if (!firstPresent && !lastPresent) continue;
     const first = readString(formData[firstKey]);
     const last = readString(formData[lastKey]);
-    if (first || last) {
-      baseNames[code] = { first, last };
-    }
+    if (first || last) baseNames[code] = { first, last };
+    else delete baseNames[code];
   }
 
   // Strip name-related keys from the form before merging the rest
