@@ -7,21 +7,35 @@ import type {
   TreeDataRow,
   TreeMeta
 } from './types';
+import {
+  LOCAL_MODE,
+  LOCAL_TREE_META,
+  StaleVersionError,
+  localGetTreeData,
+  localSaveTreeData
+} from './local-mode';
 
-export const supabase: SupabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: true,
-    flowType: 'pkce'
+export { StaleVersionError } from './local-mode';
+
+export const supabase: SupabaseClient = createClient(
+  SUPABASE_URL || 'https://placeholder.supabase.co',
+  SUPABASE_ANON_KEY || 'placeholder',
+  {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+      flowType: 'pkce'
+    }
   }
-});
+);
 
 // ---------------------------------------------------------------------------
 // Tree metadata
 // ---------------------------------------------------------------------------
 
 export async function fetchTreeMeta(): Promise<TreeMeta | null> {
+  if (LOCAL_MODE) return LOCAL_TREE_META;
   const { data, error } = await supabase
     .from('trees')
     .select('id, name, default_language')
@@ -146,6 +160,7 @@ export async function denyRequest(req: AccessRequest): Promise<void> {
 // ---------------------------------------------------------------------------
 
 export async function fetchTreeData(): Promise<TreeDataRow | null> {
+  if (LOCAL_MODE) return localGetTreeData();
   const { data, error } = await supabase
     .from('tree_data')
     .select('*')
@@ -155,17 +170,11 @@ export async function fetchTreeData(): Promise<TreeDataRow | null> {
   return data;
 }
 
-export class StaleVersionError extends Error {
-  constructor() {
-    super('Tree was updated by someone else. Refresh and try again.');
-    this.name = 'StaleVersionError';
-  }
-}
-
 export async function saveTreeData(
   people: StoredPerson[],
   expectedVersion: number
 ): Promise<TreeDataRow> {
+  if (LOCAL_MODE) return localSaveTreeData(people, expectedVersion);
   const { data: userResp } = await supabase.auth.getUser();
   const userId = userResp?.user?.id ?? null;
 
