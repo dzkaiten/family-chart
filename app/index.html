@@ -4,7 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Family Tree</title>
-  <link rel="stylesheet" href="../src/styles/family-chart.css" />
+  <!-- family-chart.css lives in ../src (outside the app/ Vite root). A direct
+       <link href="../src/..."> resolves to /src/... and is served as the SPA
+       fallback index.html (HTTP 200 but 0 CSS rules), silently disabling all
+       .f3 styling. It is imported from main.ts via the @lib alias instead so
+       Vite resolves it through the module graph. -->
   <link rel="stylesheet" href="./src/styles.css" />
 </head>
 <body>

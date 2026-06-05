@@ -1,3 +1,8 @@
+// The family-chart library's stylesheet lives in ../src (outside the app/ Vite
+// root), so it must be imported through the module graph via the @lib alias
+// (see app/vite.config.ts) rather than a <link> in index.html, which Vite would
+// serve as the SPA fallback (200 but empty). Without this, no .f3 styles apply.
+import '@lib/styles/family-chart.css';
 import { getCurrentSession, onAuthStateChange, signOut } from './auth';
 import { fetchTreeMeta } from './db';
 import { downloadJSON, downloadPNG } from './export';

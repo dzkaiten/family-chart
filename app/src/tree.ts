@@ -66,12 +66,18 @@ export async function rerenderForLanguage(): Promise<void> {
 
 async function render(): Promise<void> {
   if (!state) return;
-  state.container.innerHTML = '<div id="tree-container" class="tree-root"></div>';
+  // The family-chart library scopes ALL its styles under `.f3` (flex layout,
+  // SVG sizing, card colors, and the CSS custom properties the edit form reads).
+  // The library never adds this class itself — every example puts it on the
+  // container — so without it the tree renders unstyled and the edit form is
+  // invisible. See src/styles/family-chart.css (`.f3 { display:flex }` etc.).
+  state.container.innerHTML = '<div id="tree-container" class="tree-root f3"></div>';
   const treeEl = state.container.querySelector('#tree-container') as HTMLElement;
 
   // Seed an empty starter datum if the tree has no people yet, so the user
   // sees a usable starting point.
-  const sourcePeople = state.row.data.length > 0 ? state.row.data : seedFirstPerson();
+  const wasEmpty = state.row.data.length === 0;
+  const sourcePeople = wasEmpty ? seedFirstPerson() : state.row.data;
   const display = toDisplayPeople(sourcePeople);
   const withSigned = await resolveAvatarUrls(display);
 
@@ -104,6 +110,17 @@ async function render(): Promise<void> {
 
   state.chart = f3Chart;
   f3Chart.updateTree({ initial: true });
+
+  // The library's setEditFirst() does NOT auto-open a form (it only makes an
+  // opened form editable). For a brand-new, empty tree, open the starter
+  // person's form so the user has somewhere to enter the first person. This
+  // mirrors the official edit example (examples/htmls/v2/17-edit-tree.html),
+  // which calls editTree.open(getMainDatum()) then re-renders so the layout
+  // accounts for the form panel.
+  if (state.canEdit && state.editTree && wasEmpty) {
+    state.editTree.open(f3Chart.getMainDatum());
+    f3Chart.updateTree({ initial: true });
+  }
 }
 
 function seedFirstPerson(): StoredPerson[] {
