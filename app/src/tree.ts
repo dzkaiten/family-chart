@@ -1,11 +1,13 @@
 import f3 from '../../src/index';
+import type { Chart } from '../../src/core/chart';
+import type { EditTree } from '../../src/core/edit';
 import { fetchTreeData, saveTreeData, StaleVersionError } from './db';
 import {
   buildFormFields,
   getLanguage,
-  mergePersonUpdate,
   toDisplayPeople
 } from './lang';
+import { mapExportedToStored, buildOriginalIndex } from './persist';
 import {
   pruneOrphanedAvatars,
   resolveAvatarUrls,
@@ -17,7 +19,8 @@ import type { DisplayPerson, StoredPerson, TreeDataRow } from './types';
 interface TreeState {
   row: TreeDataRow;
   avatarPaths: Map<string, string>; // person id -> last known storage path
-  chart: any;
+  chart: Chart | null;
+  editTree: EditTree | null;
   container: HTMLElement;
   canEdit: boolean;
 }
@@ -41,6 +44,7 @@ export async function initTree(container: HTMLElement, canEdit: boolean): Promis
     row,
     avatarPaths: buildAvatarMap(row.data),
     chart: null,
+    editTree: null,
     container,
     canEdit
   };
@@ -74,25 +78,28 @@ async function render(): Promise<void> {
   const f3Chart = (f3 as any).createChart(treeEl, withSigned)
     .setTransitionTime(800)
     .setCardXSpacing(250)
-    .setCardYSpacing(150);
+    .setCardYSpacing(150) as Chart;
 
-  const f3Card = f3Chart.setCard((f3 as any).CardHtml)
+  const f3Card = (f3Chart as any).setCard((f3 as any).CardHtml)
     .setCardDisplay([['first_name', 'last_name'], ['birthday']])
     .setMiniTree(true);
 
   if (state.canEdit) {
-    const fields = buildFormFields().map(f => f.name);
-    f3Chart.editTree()
+    // Pass field objects (not bare names) so the form shows readable,
+    // per-language labels instead of raw ids like "first_name__zh-Hant".
+    const fields = buildFormFields().map(f => ({ type: f.type, label: f.label, id: f.name }));
+    const f3EditTree = f3Chart.editTree();
+    f3EditTree
       .setFields(fields)
       .setEditFirst(true)
       .setCardClickOpen(f3Card)
-      .setOnChange(() => {
-        scheduleSave();
-      });
+      .setOnChange(() => { scheduleSave(); });
+    state.editTree = f3EditTree;
     // Inject a photo upload button into the form when it opens
     installPhotoUploadHook(state.container);
   } else {
-    f3Card.setOnCardClick((_e: any, d: any) => f3Chart.updateMainId(d.data.id));
+    state.editTree = null;
+    (f3Card as any).setOnCardClick((_e: any, d: any) => f3Chart.updateMainId(d.data.id));
   }
 
   state.chart = f3Chart;
@@ -113,10 +120,17 @@ function scheduleSave(): void {
 }
 
 async function persistCurrent(): Promise<void> {
-  if (!state || !state.chart) return;
-  const libData = state.chart.getStore().getData() as DisplayPerson[];
+  if (!state || !state.editTree) return;
+  // exportData() is the library's supported way to read edited data
+  // (src/core/edit.ts). It deep-clones and cleans internal/temp fields.
+  const libData = state.editTree.exportData() as unknown as DisplayPerson[];
   const beforePeople = state.row.data;
-  const stored: StoredPerson[] = libData.map(d => displayToStored(d));
+  const stored = mapExportedToStored(
+    libData,
+    buildOriginalIndex(beforePeople),
+    state.avatarPaths,
+    getLanguage()
+  );
 
   try {
     const updated = await saveTreeData(stored, state.row.version);
@@ -133,38 +147,6 @@ async function persistCurrent(): Promise<void> {
       showToast(`Save failed: ${(err as Error).message}`, 'error');
     }
   }
-}
-
-function displayToStored(d: DisplayPerson): StoredPerson {
-  if (!state) throw new Error('Tree state not initialized');
-  const original = state.row.data.find(p => p.id === d.id) ?? null;
-
-  // Resolve avatar path. The library was shown a signed URL; if it's still
-  // there unchanged we restore the original path. If the field now contains a
-  // bare path (newly uploaded) we use that. If it's empty, clear.
-  const a = d.data.avatar;
-  let avatarPath: string | undefined;
-  if (typeof a !== 'string' || a === '') {
-    avatarPath = undefined;
-  } else if (a.startsWith('http://') || a.startsWith('https://')) {
-    avatarPath = state.avatarPaths.get(d.id);
-  } else {
-    avatarPath = a;
-  }
-
-  const newData = mergePersonUpdate(original, d.data, getLanguage());
-  if (avatarPath) newData.avatar = avatarPath;
-  else delete (newData as Record<string, unknown>).avatar;
-
-  return {
-    id: d.id,
-    data: newData,
-    rels: {
-      parents: Array.isArray(d.rels?.parents) ? (d.rels.parents as string[]) : [],
-      spouses: Array.isArray(d.rels?.spouses) ? (d.rels.spouses as string[]) : [],
-      children: Array.isArray(d.rels?.children) ? (d.rels.children as string[]) : []
-    }
-  };
 }
 
 // ---------------------------------------------------------------------------
@@ -219,7 +201,7 @@ function readPersonIdFromForm(form: HTMLElement): string | null {
   if (id) return id;
   // Fallback: read main id from chart store
   try {
-    return (state?.chart?.getStore?.()?.getMainDatum?.()?.id as string) ?? null;
+    return (state?.chart?.getMainDatum?.()?.id as string) ?? null;
   } catch {
     return null;
   }
