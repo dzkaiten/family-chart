@@ -1,6 +1,6 @@
 -- Family Chart App schema
 -- Run this once in the Supabase SQL editor during first-time setup.
--- See .claude/SPEC.md (private) or the README for the full setup checklist.
+-- See docs/spec.md or app/README.md for the full setup checklist.
 
 -- ============================================================================
 -- Tables

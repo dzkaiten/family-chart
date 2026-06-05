@@ -84,9 +84,6 @@ Supabase's built-in email is throttled to ~2/hour. Use Gmail (free, 500/day):
 # Install dependencies
 yarn install
 
-# Build the library (once)
-yarn build
-
 # Run the app dev server
 yarn app:dev
 
