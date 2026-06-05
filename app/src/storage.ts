@@ -12,7 +12,7 @@ import type { DisplayPerson, StoredPerson } from './types';
 interface CacheEntry { url: string; generatedAt: number; }
 const signedUrlCache = new Map<string, CacheEntry>();
 
-function isStoragePath(value: string): boolean {
+export function isStoragePath(value: string): boolean {
   // Anything starting with our tree id (a UUID-ish path) is treated as a
   // private storage path. Absolute URLs (http/https) pass through unchanged.
   if (!value) return false;

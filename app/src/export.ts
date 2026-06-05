@@ -24,7 +24,7 @@ function triggerDownload(blob: Blob, filename: string): void {
 
 // Strip avatar fields from each person; the JSON download is relationships +
 // names only, per spec.
-function stripAvatars(people: StoredPerson[]): StoredPerson[] {
+export function stripAvatars(people: StoredPerson[]): StoredPerson[] {
   return people.map(p => {
     const { avatar: _drop, ...rest } = p.data;
     return { ...p, data: rest as StoredPerson['data'] };
