@@ -44,6 +44,9 @@
     "build": "node build.js",
     "test": "cypress open",
     "test-run": "cypress run",
+    "test:unit": "vitest run",
+    "test:unit:watch": "vitest",
+    "typecheck": "tsc -p app/tsconfig.json --noEmit",
     "dev": "vite",
     "app:dev": "vite app",
     "app:build": "vite build app",
@@ -68,6 +71,7 @@
     "rollup": "^4.45.1",
     "typedoc": "^0.28.13",
     "typescript": "^5.8.3",
-    "vite": "^6.3.5"
+    "vite": "^6.3.5",
+    "vitest": "^4.1.8"
   }
 }

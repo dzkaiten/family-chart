@@ -12,7 +12,8 @@
     "isolatedModules": true,
     "noEmit": true,
     "allowImportingTsExtensions": false,
+    "allowJs": true,
     "types": ["vite/client"]
   },
-  "include": ["src", "../src"]
+  "include": ["src"]
 }
