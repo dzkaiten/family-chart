@@ -80,6 +80,36 @@ describe('mergePersonUpdate (write adapter)', () => {
     }, 'en');
     expect(out.names['zh-Hant']).toBeUndefined();
   });
+
+  it('does not fabricate an active-language name from the display fallback', () => {
+    // Active language zh-Hant, person has only an English name. The unsuffixed
+    // (active) field shows the English fallback; saving must NOT create a
+    // zh-Hant entry equal to the English name.
+    const enOnly: StoredPerson = {
+      id: 'p1',
+      data: { names: { en: { first: 'John', last: 'Smith' } } },
+      rels: { parents: [], spouses: [], children: [] }
+    };
+    const out = mergePersonUpdate(enOnly, {
+      first_name: 'John', last_name: 'Smith',
+      'first_name__en': 'John', 'last_name__en': 'Smith'
+    }, 'zh-Hant');
+    expect(out.names['zh-Hant']).toBeUndefined();
+    expect(out.names.en).toEqual({ first: 'John', last: 'Smith' });
+  });
+
+  it('persists a real active-language name the user actually typed', () => {
+    const enOnly: StoredPerson = {
+      id: 'p1',
+      data: { names: { en: { first: 'John', last: 'Smith' } } },
+      rels: { parents: [], spouses: [], children: [] }
+    };
+    const out = mergePersonUpdate(enOnly, {
+      first_name: '約翰', last_name: '史密斯',
+      'first_name__en': 'John', 'last_name__en': 'Smith'
+    }, 'zh-Hant');
+    expect(out.names['zh-Hant']).toEqual({ first: '約翰', last: '史密斯' });
+  });
 });
 
 describe('buildFormFields (form labels)', () => {

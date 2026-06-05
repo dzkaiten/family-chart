@@ -105,6 +105,7 @@ export function mergePersonUpdate(
   // A field that is present but empty is an explicit clear: drop that language
   // entry rather than keeping a stale value. A field that is absent is left
   // untouched (so partial form payloads don't wipe other languages).
+  const originalNames: NamesMap = existing?.data.names ?? {};
   for (const { code } of LANGUAGES) {
     const firstKey = code === activeLanguage ? 'first_name' : `first_name__${code}`;
     const lastKey = code === activeLanguage ? 'last_name' : `last_name__${code}`;
@@ -113,6 +114,21 @@ export function mergePersonUpdate(
     if (!firstPresent && !lastPresent) continue;
     const first = readString(formData[firstKey]);
     const last = readString(formData[lastKey]);
+
+    // The active language uses the unsuffixed first_name/last_name, which
+    // toDisplayPerson fills from the display fallback chain when the active
+    // language has no name of its own. If this language never had an entry and
+    // the submitted value is exactly that fallback, it isn't a real name in
+    // this language — don't fabricate one (otherwise the first save after a
+    // language switch copies e.g. the English name into the zh-Hant slot).
+    if (code === activeLanguage) {
+      const hadActive = !!(originalNames[code]?.first || originalNames[code]?.last);
+      if (!hadActive) {
+        const fallback = resolveName(originalNames, activeLanguage);
+        if (first === (fallback.first ?? '') && last === (fallback.last ?? '')) continue;
+      }
+    }
+
     if (first || last) baseNames[code] = { first, last };
     else delete baseNames[code];
   }
