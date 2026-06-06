@@ -189,8 +189,8 @@ export interface FormFieldConfig {
 
 export function buildFormFields(): FormFieldConfig[] {
   return [
-    { type: 'text', label: 'Given name', name: 'first_name' },
-    { type: 'text', label: 'Family name', name: 'last_name' },
+    { type: 'text', label: 'First name', name: 'first_name' },
+    { type: 'text', label: 'Last name', name: 'last_name' },
     // One optional Chinese name; accepts Traditional or Simplified, stored as-is.
     { type: 'text', label: 'Chinese name (optional)', name: 'cn_name' },
     { type: 'text', label: 'Birthday', name: 'birthday' },

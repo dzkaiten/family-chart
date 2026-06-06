@@ -105,9 +105,9 @@ describe('buildFormFields', () => {
     expect(fields.every(f => f.type !== 'select')).toBe(true);
   });
 
-  it('labels the English fields Given/Family', () => {
+  it('labels the English fields First/Last name', () => {
     const fields = buildFormFields();
-    expect(fields.find(f => f.name === 'first_name')?.label).toMatch(/Given/);
-    expect(fields.find(f => f.name === 'last_name')?.label).toMatch(/Family/);
+    expect(fields.find(f => f.name === 'first_name')?.label).toMatch(/First name/);
+    expect(fields.find(f => f.name === 'last_name')?.label).toMatch(/Last name/);
   });
 });

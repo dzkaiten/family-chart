@@ -176,6 +176,14 @@ function installPhotoUploadHook(root: HTMLElement): void {
   const observer = new MutationObserver(() => {
     const form = root.querySelector('form');
     if (!form) return;
+
+    // Upgrade the plain birthday text input to a native date picker (calendar).
+    const birthday = form.querySelector<HTMLInputElement>('[name="birthday"]');
+    if (birthday && birthday.type !== 'date') {
+      birthday.type = 'date';
+      birthday.max = new Date().toISOString().slice(0, 10); // no future dates
+    }
+
     if (form.querySelector('[data-photo-upload]')) return;
 
     const personId = readPersonIdFromForm(form);
