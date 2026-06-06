@@ -106,8 +106,16 @@ export function toDisplayPerson(person: StoredPerson, lang: LanguageCode = curre
   const names = person.data.names ?? {};
   const en = names.en ?? {};
 
-  // Name shown on the CARD, in the current VIEW language (with fallback).
+  // Primary name shown on the CARD, in the current VIEW language (with fallback).
   const { entry: activeName, code: activeCode } = resolveNameWithCode(names, lang);
+  const display_name = formatDisplayName(activeName, activeCode);
+
+  const enStr = (en.first || en.last) ? formatDisplayName(en, 'en') : '';
+  const cnStr = chineseString(chineseEntry(names));
+  // Secondary line: the OTHER name (so we never repeat the primary). e.g. in an
+  // English view this is the Chinese name, and vice versa.
+  const altCandidate = display_name === cnStr ? enStr : cnStr;
+  const alt_name = altCandidate && altCandidate !== display_name ? altCandidate : '';
 
   // Drop the names map; the library reads flat fields instead.
   const { names: _drop, ...rest } = person.data;
@@ -115,8 +123,9 @@ export function toDisplayPerson(person: StoredPerson, lang: LanguageCode = curre
     ...rest,
     first_name: en.first ?? '',
     last_name: en.last ?? '',
-    cn_name: chineseString(chineseEntry(names)),
-    display_name: formatDisplayName(activeName, activeCode)
+    cn_name: cnStr,
+    display_name,
+    alt_name
   };
 
   return { id: person.id, data: out, rels: person.rels };

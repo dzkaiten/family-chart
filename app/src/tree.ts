@@ -87,10 +87,14 @@ async function render(): Promise<void> {
     .setCardYSpacing(150) as Chart;
 
   const f3Card = (f3Chart as any).setCard((f3 as any).CardHtml)
-    // Show the single, culturally-ordered display_name (computed in lang.ts)
-    // instead of first+last, so Chinese names render surname-first with no space.
-    .setCardDisplay([['display_name'], ['birthday']])
-    .setMiniTree(true);
+    // Card shows the person's details: primary name (display_name), the other-
+    // language name (alt_name), and birthday. Photo + gender colour render too.
+    .setCardDisplay([['display_name'], ['alt_name'], ['birthday']])
+    .setMiniTree(true)
+    // Bigger cards + a larger photo so the picture is easy to see.
+    .setCardDim({ width: 300, height: 150, img_width: 130, img_height: 130 })
+    // Make each card's photo click-to-expand to full (original) size.
+    .setOnCardUpdate(makePhotoExpandable);
 
   if (state.canEdit) {
     // Pass field objects (not bare names) so the form shows readable,
@@ -166,6 +170,37 @@ async function persistCurrent(): Promise<void> {
       showToast(`Save failed: ${(err as Error).message}`, 'error');
     }
   }
+}
+
+// ---------------------------------------------------------------------------
+// Photo: click a card's picture to view it at full (original) size
+// ---------------------------------------------------------------------------
+
+// Runs per card via setOnCardUpdate (`this` is the card node). Attaches a
+// click-to-expand handler to the card's <img> exactly once.
+function makePhotoExpandable(this: HTMLElement): void {
+  const img = this.querySelector('img') as HTMLImageElement | null;
+  if (!img || img.dataset.expandWired) return;
+  img.dataset.expandWired = '1';
+  img.style.cursor = 'zoom-in';
+  img.title = 'Click to view full size';
+  img.addEventListener('click', (e) => {
+    e.stopPropagation(); // don't also open the edit form
+    openImageLightbox(img.src);
+  });
+}
+
+function openImageLightbox(src: string): void {
+  const overlay = document.createElement('div');
+  overlay.className = 'f3-image-lightbox';
+  const full = document.createElement('img');
+  full.src = src;
+  overlay.appendChild(full);
+  const close = () => { overlay.remove(); document.removeEventListener('keydown', onKey); };
+  const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') close(); };
+  overlay.addEventListener('click', close);
+  document.addEventListener('keydown', onKey);
+  document.body.appendChild(overlay);
 }
 
 // ---------------------------------------------------------------------------
