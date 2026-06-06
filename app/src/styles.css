@@ -230,6 +230,14 @@ html, body {
 .tree-root {
   width: 100%;
   height: 100%;
+  /* The chart container also carries the library's `f3` class, which defines
+     --background-color / --text-color but does not apply them. The edit-form
+     inputs use `color: currentColor` on a dark field, so without a light
+     `color` here the typed text inherits the app's dark body color and is
+     invisible (dark-on-dark). The official examples set color/background
+     inline on the container; do the equivalent via the theme vars. */
+  background-color: var(--background-color, rgb(33, 33, 33));
+  color: var(--text-color, #fff);
 }
 
 #tree-container {

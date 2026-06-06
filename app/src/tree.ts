@@ -205,9 +205,9 @@ function installPhotoUploadHook(root: HTMLElement): void {
       }
     });
 
-    // Place the upload control just above the submit button if found
-    const submit = form.querySelector('button[type="submit"], input[type="submit"]');
-    if (submit?.parentElement) submit.parentElement.insertBefore(wrapper, submit);
+    // Place the upload control just above the buttons row
+    const btnRow = form.querySelector('.f3-form-buttons');
+    if (btnRow) btnRow.before(wrapper);
     else form.appendChild(wrapper);
   });
   observer.observe(root, { childList: true, subtree: true });

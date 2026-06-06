@@ -40,30 +40,61 @@ export function getLanguageOptions(): LanguageOption[] {
 // Read adapter: stored shape -> library-facing shape (flat first/last fields)
 // ---------------------------------------------------------------------------
 
-function resolveName(names: NamesMap, lang: LanguageCode): NameEntry {
+// Cultures that write the family name first (and, for CJK, with no separator):
+// Chinese, Japanese, Korean. Used to order the single display name per script.
+function isFamilyNameFirst(lang: LanguageCode | null): boolean {
+  return !!lang && /^(zh|ja|ko)(-|$)/.test(lang);
+}
+
+// Resolve the best name for `lang`, returning BOTH the entry and the language
+// code it actually came from — so display ordering follows the name's own
+// script, not just the selected UI language (an English fallback stays
+// given-first even while the UI is set to Chinese).
+function resolveNameWithCode(
+  names: NamesMap,
+  lang: LanguageCode
+): { entry: NameEntry; code: LanguageCode | null } {
   const direct = names[lang];
-  if (direct && (direct.first || direct.last)) return direct;
+  if (direct && (direct.first || direct.last)) return { entry: direct, code: lang };
 
   const en = names.en;
-  if (en && (en.first || en.last)) return en;
+  if (en && (en.first || en.last)) return { entry: en, code: 'en' };
 
   for (const code of Object.keys(names)) {
     const entry = names[code];
-    if (entry && (entry.first || entry.last)) return entry;
+    if (entry && (entry.first || entry.last)) return { entry, code: code as LanguageCode };
   }
-  return {};
+  return { entry: {}, code: null };
+}
+
+function resolveName(names: NamesMap, lang: LanguageCode): NameEntry {
+  return resolveNameWithCode(names, lang).entry;
+}
+
+// Order given/family into one display string per the resolved script:
+//   Chinese/Japanese/Korean -> family+given, no space (毛泽东)
+//   everyone else            -> given family (Ada Lovelace)
+export function formatDisplayName(first: string, last: string, code: LanguageCode | null): string {
+  if (isFamilyNameFirst(code)) return `${last}${first}`;
+  return [first, last].filter(Boolean).join(' ');
 }
 
 export function toDisplayPerson(person: StoredPerson, lang: LanguageCode = currentLanguage): DisplayPerson {
   const names = person.data.names ?? {};
-  const activeName = resolveName(names, lang);
+  const { entry: activeName, code: activeCode } = resolveNameWithCode(names, lang);
+  const first = activeName.first ?? '';
+  const last = activeName.last ?? '';
 
   // Drop the names map; the library reads flat fields instead.
   const { names: _drop, ...rest } = person.data;
   const out: DisplayPerson['data'] = {
     ...rest,
-    first_name: activeName.first ?? '',
-    last_name: activeName.last ?? ''
+    first_name: first,
+    last_name: last,
+    // Single, culturally-ordered string used for the CARD label. The edit form
+    // still edits given/family separately; this only governs how the name is
+    // shown on the card (family-first, no separator, for CJK).
+    display_name: formatDisplayName(first, last, activeCode)
   };
 
   // Expose other-language fields with suffixed keys so the edit form can
@@ -138,7 +169,7 @@ export function mergePersonUpdate(
   for (const [key, value] of Object.entries(formData)) {
     if (key === 'first_name' || key === 'last_name') continue;
     if (key.startsWith('first_name__') || key.startsWith('last_name__')) continue;
-    if (key === 'names') continue;
+    if (key === 'names' || key === 'display_name') continue;
     rest[key] = value;
   }
 
@@ -165,10 +196,10 @@ export function buildFormFields(): { type: string; label: string; name: string }
     const isDefault = code === currentLanguage;
     const firstName = isDefault ? 'first_name' : `first_name__${code}`;
     const lastName = isDefault ? 'last_name' : `last_name__${code}`;
-    fields.push({ type: 'text', label: `First name (${label})`, name: firstName });
-    fields.push({ type: 'text', label: `Last name (${label})`, name: lastName });
+    fields.push({ type: 'text', label: `Given name (${label})`, name: firstName });
+    fields.push({ type: 'text', label: `Family name (${label})`, name: lastName });
   }
   fields.push({ type: 'text', label: 'Birthday', name: 'birthday' });
-  fields.push({ type: 'text', label: 'Avatar', name: 'avatar' });
+  fields.push({ type: 'text', label: 'Profile photo', name: 'avatar' });
   return fields;
 }
