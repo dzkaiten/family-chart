@@ -4,6 +4,8 @@ import type { EditTree } from '../../src/core/edit';
 import { fetchTreeData, saveTreeData, StaleVersionError } from './db';
 import {
   buildFormFields,
+  cardPrimaryName,
+  cardSecondaryName,
   getLanguage,
   toDisplayPeople
 } from './lang';
@@ -88,9 +90,14 @@ async function render(): Promise<void> {
     .setCardYSpacing(300) as Chart;
 
   const f3Card = (f3Chart as any).setCard((f3 as any).CardHtml)
-    // Card shows the person's details: primary name (display_name), the other-
-    // language name (alt_name), and birthday. Photo + gender colour render too.
-    .setCardDisplay([['display_name'], ['alt_name'], ['birthday']])
+    // Compute the name from the FLAT fields so newly-added cards (which lack the
+    // read adapter's precomputed display_name) still show the name, not just the
+    // birthday. Line 1 = primary name, line 2 = other-language name, line 3 = DOB.
+    .setCardDisplay([
+      (d: any) => cardPrimaryName(d.data),
+      (d: any) => cardSecondaryName(d.data),
+      (d: any) => (typeof d.data?.birthday === 'string' ? d.data.birthday : '')
+    ])
     .setMiniTree(true)
     // Bigger cards + a larger photo so the picture is easy to see.
     .setCardDim({ width: 300, height: 150, img_width: 130, img_height: 130 })
@@ -205,11 +212,44 @@ function openImageLightbox(src: string): void {
 }
 
 // ---------------------------------------------------------------------------
+// Tooltips: label the icon-only add / edit / remove / delete controls so it's
+// clear what each does on hover.
+// ---------------------------------------------------------------------------
+
+const ACTION_TOOLTIPS: [string, string][] = [
+  ['.f3-add-relative-btn', 'Add relative'],
+  ['.f3-edit-btn', 'Edit details'],
+  ['.f3-remove-relative-btn', 'Remove this relationship'],
+  ['.f3-delete-btn', 'Delete person'],
+  ['.f3-close-btn', 'Close'],
+  ['.card_add_relative', 'Add relative'],
+  ['.card_edit', 'Edit details']
+];
+
+function setActionTooltips(root: HTMLElement): void {
+  for (const [sel, label] of ACTION_TOOLTIPS) {
+    root.querySelectorAll(sel).forEach(el => {
+      if (el.getAttribute('title') === label) return;
+      el.setAttribute('title', label);
+      // SVG elements surface tooltips via a <title> child, not the attribute.
+      if (el instanceof SVGElement && !el.querySelector('title')) {
+        const t = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+        t.textContent = label;
+        el.insertBefore(t, el.firstChild);
+      }
+    });
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Photo upload: inject a file input into the edit form when it appears
 // ---------------------------------------------------------------------------
 
 function installPhotoUploadHook(root: HTMLElement): void {
   const observer = new MutationObserver(() => {
+    // Label the icon-only add/edit/remove controls (cards + form) on hover.
+    setActionTooltips(root);
+
     const form = root.querySelector('form');
     if (!form) return;
 
