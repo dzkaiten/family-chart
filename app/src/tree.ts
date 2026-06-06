@@ -1,4 +1,5 @@
 import f3 from '../../src/index';
+import { pencilSvgIcon } from '../../src/renderers/icons';
 import type { Chart } from '../../src/core/chart';
 import type { EditTree } from '../../src/core/edit';
 import { fetchTreeData, saveTreeData, StaleVersionError } from './db';
@@ -241,6 +242,15 @@ function setActionTooltips(root: HTMLElement): void {
   }
 }
 
+// Keep the form's edit control a plain pencil. The library swaps in a crossed
+// "pencil-off" icon while the form is editable, which reads as "no editing".
+function fixEditIcon(root: HTMLElement): void {
+  const editBtn = root.querySelector('.f3-edit-btn');
+  if (editBtn && editBtn.querySelector('[data-icon="pencil-off"]')) {
+    editBtn.innerHTML = pencilSvgIcon();
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Photo upload: inject a file input into the edit form when it appears
 // ---------------------------------------------------------------------------
@@ -249,6 +259,8 @@ function installPhotoUploadHook(root: HTMLElement): void {
   const observer = new MutationObserver(() => {
     // Label the icon-only add/edit/remove controls (cards + form) on hover.
     setActionTooltips(root);
+    // Keep the edit control a plain pencil (not the crossed "pencil-off").
+    fixEditIcon(root);
 
     const form = root.querySelector('form');
     if (!form) return;
