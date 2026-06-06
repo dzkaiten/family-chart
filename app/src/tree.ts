@@ -87,7 +87,9 @@ async function render(): Promise<void> {
     .setCardYSpacing(150) as Chart;
 
   const f3Card = (f3Chart as any).setCard((f3 as any).CardHtml)
-    .setCardDisplay([['first_name', 'last_name'], ['birthday']])
+    // Show the single, culturally-ordered display_name (computed in lang.ts)
+    // instead of first+last, so Chinese names render surname-first with no space.
+    .setCardDisplay([['display_name'], ['birthday']])
     .setMiniTree(true);
 
   if (state.canEdit) {
@@ -205,10 +207,19 @@ function installPhotoUploadHook(root: HTMLElement): void {
       }
     });
 
-    // Place the upload control just above the buttons row
-    const btnRow = form.querySelector('.f3-form-buttons');
-    if (btnRow) btnRow.before(wrapper);
-    else form.appendChild(wrapper);
+    // Hide the raw "avatar" URL field (confusing — "What is avatar?") and drop
+    // the photo uploader in its place. The hidden input still carries the value
+    // we set after upload, which the library persists on save.
+    const avatarField = form.querySelector<HTMLInputElement>('[name="avatar"], [id="avatar"]')
+      ?.closest('.f3-form-field') as HTMLElement | null;
+    if (avatarField) {
+      avatarField.style.display = 'none';
+      avatarField.parentElement?.insertBefore(wrapper, avatarField);
+    } else {
+      const btnRow = form.querySelector('.f3-form-buttons');
+      if (btnRow) btnRow.before(wrapper);
+      else form.appendChild(wrapper);
+    }
   });
   observer.observe(root, { childList: true, subtree: true });
 }
