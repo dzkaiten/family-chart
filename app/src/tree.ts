@@ -1,5 +1,4 @@
 import f3 from '../../src/index';
-import { pencilSvgIcon } from '../../src/renderers/icons';
 import type { Chart } from '../../src/core/chart';
 import type { EditTree } from '../../src/core/edit';
 import { fetchTreeData, saveTreeData, StaleVersionError } from './db';
@@ -242,13 +241,12 @@ function setActionTooltips(root: HTMLElement): void {
   }
 }
 
-// Keep the form's edit control a plain pencil. The library swaps in a crossed
-// "pencil-off" icon while the form is editable, which reads as "no editing".
-function fixEditIcon(root: HTMLElement): void {
-  const editBtn = root.querySelector('.f3-edit-btn');
-  if (editBtn && editBtn.querySelector('[data-icon="pencil-off"]')) {
-    editBtn.innerHTML = pencilSvgIcon();
-  }
+// The edit (pencil) control only toggles the form between editable inputs and a
+// read-only view. The app always opens cards editable (setEditFirst), so this
+// toggle is redundant and confusing (it does the opposite of "edit") — hide it.
+function hideEditToggle(root: HTMLElement): void {
+  const editBtn = root.querySelector<HTMLElement>('.f3-edit-btn');
+  if (editBtn && editBtn.style.display !== 'none') editBtn.style.display = 'none';
 }
 
 // ---------------------------------------------------------------------------
@@ -259,8 +257,8 @@ function installPhotoUploadHook(root: HTMLElement): void {
   const observer = new MutationObserver(() => {
     // Label the icon-only add/edit/remove controls (cards + form) on hover.
     setActionTooltips(root);
-    // Keep the edit control a plain pencil (not the crossed "pencil-off").
-    fixEditIcon(root);
+    // The edit toggle is redundant (cards already open editable) — hide it.
+    hideEditToggle(root);
 
     const form = root.querySelector('form');
     if (!form) return;
