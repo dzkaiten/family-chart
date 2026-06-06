@@ -10,7 +10,7 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !TREE_ID) {
   console.error('Missing required environment variables. Check .env.example.');
 }
 
-export type LanguageCode = 'en' | 'zh-Hant' | 'zh-Hans';
+export type LanguageCode = 'en' | 'zh';
 
 export interface LanguageOption {
   code: LanguageCode;
@@ -19,8 +19,7 @@ export interface LanguageOption {
 
 export const LANGUAGES: LanguageOption[] = [
   { code: 'en', label: 'English' },
-  { code: 'zh-Hant', label: '中文 (繁體)' },
-  { code: 'zh-Hans', label: '中文 (简体)' }
+  { code: 'zh', label: '中文' }
 ];
 
 export const DEFAULT_LANGUAGE: LanguageCode = 'en';

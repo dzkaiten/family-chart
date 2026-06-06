@@ -39,47 +39,56 @@ export function getLanguageOptions(): LanguageOption[] {
 // ---------------------------------------------------------------------------
 // Name model
 // ---------------------------------------------------------------------------
-// A person's `names` map holds one entry per script, language-tagged
-// (GEDCOM-X style). English is a structured given/family name; Chinese is a
-// single-unit name stored in `full` under ONE script key (zh-Hant or zh-Hans).
+// `names` holds one entry per language. English is a structured given/family
+// name; Chinese is a single-unit name in `full` under the `zh` key (script-
+// agnostic — we accept Traditional or Simplified and don't distinguish them).
 
-// Cultures that write the family name first (and, for CJK, with no separator).
-function isFamilyNameFirst(lang: LanguageCode | null): boolean {
-  return !!lang && /^(zh|ja|ko)(-|$)/.test(lang);
-}
-
-function isChinese(lang: LanguageCode | null): boolean {
-  return !!lang && /^zh(-|$)/.test(lang);
+function isFamilyNameFirst(code: LanguageCode | null): boolean {
+  return !!code && /^(zh|ja|ko)/.test(code);
 }
 
 function hasName(e: NameEntry | undefined): boolean {
   return !!e && !!(e.first || e.last || e.full);
 }
 
-// Resolve the best name for `lang`, returning the entry AND the code it came
-// from (so display follows the name's own script). For a Chinese view we prefer
-// the other Chinese script before falling back to English.
+// The Chinese name entry, accepting the canonical `zh` key or any legacy
+// `zh-*` key from earlier data.
+function chineseEntry(names: NamesMap): NameEntry | undefined {
+  if (hasName(names.zh)) return names.zh;
+  for (const code of Object.keys(names)) {
+    if (/^zh/.test(code) && hasName(names[code])) return names[code];
+  }
+  return undefined;
+}
+
+function chineseString(e: NameEntry | undefined): string {
+  if (!e) return '';
+  if (e.full) return e.full;
+  return `${e.last ?? ''}${e.first ?? ''}`; // legacy given/family Chinese data
+}
+
+// Resolve the name to show for `lang`, with its source code (for ordering).
 function resolveNameWithCode(
   names: NamesMap,
   lang: LanguageCode
 ): { entry: NameEntry; code: LanguageCode | null } {
-  if (hasName(names[lang])) return { entry: names[lang]!, code: lang };
-
-  if (isChinese(lang)) {
-    const other: LanguageCode = lang === 'zh-Hant' ? 'zh-Hans' : 'zh-Hant';
-    if (hasName(names[other])) return { entry: names[other]!, code: other };
+  if (lang === 'zh') {
+    const cn = chineseEntry(names);
+    if (cn) return { entry: cn, code: 'zh' };
+  } else if (hasName(names[lang])) {
+    return { entry: names[lang]!, code: lang };
   }
-
   if (hasName(names.en)) return { entry: names.en!, code: 'en' };
-
+  const cn = chineseEntry(names);
+  if (cn) return { entry: cn, code: 'zh' };
   for (const code of Object.keys(names)) {
     if (hasName(names[code])) return { entry: names[code]!, code: code as LanguageCode };
   }
   return { entry: {}, code: null };
 }
 
-// Compose one display string for a name entry:
-//   - a Chinese single-unit name uses `full` as written (姚明)
+// Compose one display string:
+//   - a single-unit name uses `full` as written (姚明)
 //   - otherwise order given/family by script (family-first, no space, for CJK)
 export function formatDisplayName(entry: NameEntry, code: LanguageCode | null): string {
   if (entry.full) return entry.full;
@@ -89,20 +98,6 @@ export function formatDisplayName(entry: NameEntry, code: LanguageCode | null): 
   return [first, last].filter(Boolean).join(' ');
 }
 
-// We keep a single Chinese form per person; prefer Traditional when both exist.
-function pickChineseCode(names: NamesMap): LanguageCode | null {
-  if (hasName(names['zh-Hant'])) return 'zh-Hant';
-  if (hasName(names['zh-Hans'])) return 'zh-Hans';
-  return null;
-}
-
-// Read a Chinese entry as one string (supports legacy given/family Chinese data).
-function chineseNameString(e: NameEntry | undefined): string {
-  if (!e) return '';
-  if (e.full) return e.full;
-  return `${e.last ?? ''}${e.first ?? ''}`;
-}
-
 // ---------------------------------------------------------------------------
 // Read adapter: stored shape -> library-facing shape (flat fields)
 // ---------------------------------------------------------------------------
@@ -110,7 +105,6 @@ function chineseNameString(e: NameEntry | undefined): string {
 export function toDisplayPerson(person: StoredPerson, lang: LanguageCode = currentLanguage): DisplayPerson {
   const names = person.data.names ?? {};
   const en = names.en ?? {};
-  const cnCode = pickChineseCode(names);
 
   // Name shown on the CARD, in the current VIEW language (with fallback).
   const { entry: activeName, code: activeCode } = resolveNameWithCode(names, lang);
@@ -119,13 +113,9 @@ export function toDisplayPerson(person: StoredPerson, lang: LanguageCode = curre
   const { names: _drop, ...rest } = person.data;
   const out: DisplayPerson['data'] = {
     ...rest,
-    // English structured name (edited as given/family).
     first_name: en.first ?? '',
     last_name: en.last ?? '',
-    // Single Chinese name + the script it's written in (for the edit form).
-    cn_name: chineseNameString(cnCode ? names[cnCode] : undefined),
-    cn_script: cnCode ?? 'zh-Hant',
-    // Culturally-ordered label for the card.
+    cn_name: chineseString(chineseEntry(names)),
     display_name: formatDisplayName(activeName, activeCode)
   };
 
@@ -155,21 +145,20 @@ export function mergePersonUpdate(
     else delete baseNames.en;
   }
 
-  // Single Chinese name -> stored under the selected script; the OTHER script is
-  // cleared so each person keeps exactly one Chinese form.
-  if ('cn_name' in formData || 'cn_script' in formData) {
+  // Single, script-agnostic Chinese name under `zh` (drops any legacy zh-* keys).
+  if ('cn_name' in formData) {
     const cnName = readString(formData.cn_name);
-    const script: LanguageCode = readString(formData.cn_script) === 'zh-Hans' ? 'zh-Hans' : 'zh-Hant';
-    delete baseNames['zh-Hant'];
-    delete baseNames['zh-Hans'];
-    if (cnName) baseNames[script] = { full: cnName };
+    for (const code of Object.keys(baseNames)) {
+      if (/^zh/.test(code)) delete baseNames[code];
+    }
+    if (cnName) baseNames.zh = { full: cnName };
   }
 
   // Keep non-name fields (gender, birthday, avatar, …); drop name + form-only keys.
   const rest: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(formData)) {
-    if (key === 'first_name' || key === 'last_name') continue;
-    if (key === 'cn_name' || key === 'cn_script') continue;
+    if (key === 'first_name' || key === 'last_name' || key === 'cn_name') continue;
+    if (key === 'cn_script') continue; // legacy from the script-dropdown version
     if (key.startsWith('first_name__') || key.startsWith('last_name__')) continue; // legacy
     if (key === 'names' || key === 'display_name') continue;
     rest[key] = value;
@@ -188,7 +177,7 @@ function readString(v: unknown): string {
 }
 
 // ---------------------------------------------------------------------------
-// Form fields the family-chart library renders ({type, label, name[, options]})
+// Form fields the family-chart library renders ({type, label, name})
 // ---------------------------------------------------------------------------
 
 export interface FormFieldConfig {
@@ -200,20 +189,10 @@ export interface FormFieldConfig {
 
 export function buildFormFields(): FormFieldConfig[] {
   return [
-    // English (Latin) name: structured given + family.
     { type: 'text', label: 'Given name', name: 'first_name' },
     { type: 'text', label: 'Family name', name: 'last_name' },
-    // Chinese name: one optional box (written as a single unit) + its script.
+    // One optional Chinese name; accepts Traditional or Simplified, stored as-is.
     { type: 'text', label: 'Chinese name (optional)', name: 'cn_name' },
-    {
-      type: 'select',
-      label: 'Chinese script',
-      name: 'cn_script',
-      options: [
-        { value: 'zh-Hant', label: 'Traditional (繁體)' },
-        { value: 'zh-Hans', label: 'Simplified (简体)' }
-      ]
-    },
     { type: 'text', label: 'Birthday', name: 'birthday' },
     { type: 'text', label: 'Profile photo', name: 'avatar' }
   ];
