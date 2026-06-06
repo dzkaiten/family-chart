@@ -249,6 +249,27 @@ function hideEditToggle(root: HTMLElement): void {
   if (editBtn && editBtn.style.display !== 'none') editBtn.style.display = 'none';
 }
 
+// Turn the icon-only "add relative" control into a clearly labelled button so
+// non-technical users understand it. Re-applied on each form render.
+function labelAddRelative(root: HTMLElement): void {
+  const btn = root.querySelector<HTMLElement>('.f3-add-relative-btn');
+  if (!btn) return;
+  const active = !!btn.querySelector('[data-icon="user-plus-close"]'); // add-mode on
+  // Idempotent: only mutate when something actually changes, otherwise our own
+  // mutations re-trigger the MutationObserver in an infinite loop.
+  if (!btn.classList.contains('f3-add-relative-as-button')) {
+    btn.classList.add('f3-add-relative-as-button');
+  }
+  let label = btn.querySelector<HTMLElement>('.f3-add-relative-label');
+  if (!label) {
+    label = document.createElement('span');
+    label.className = 'f3-add-relative-label';
+    btn.appendChild(label);
+  }
+  const want = active ? 'Cancel' : 'Add relative';
+  if (label.textContent !== want) label.textContent = want;
+}
+
 // ---------------------------------------------------------------------------
 // Photo upload: inject a file input into the edit form when it appears
 // ---------------------------------------------------------------------------
@@ -259,6 +280,8 @@ function installPhotoUploadHook(root: HTMLElement): void {
     setActionTooltips(root);
     // The edit toggle is redundant (cards already open editable) — hide it.
     hideEditToggle(root);
+    // Make "add relative" a clearly labelled button for non-technical users.
+    labelAddRelative(root);
 
     const form = root.querySelector('form');
     if (!form) return;

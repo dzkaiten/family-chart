@@ -267,6 +267,28 @@ html, body {
   border-radius: 4px;
 }
 
+/* "Add relative" rendered as a clear, full-width button (for non-technical users). */
+.f3-add-relative-btn.f3-add-relative-as-button {
+  display: flex;
+  box-sizing: border-box;
+  width: 100%;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin: 34px 0 4px;          /* top margin clears the absolute close (X) button */
+  padding: 10px 14px;
+  background: #2563eb;
+  color: #fff;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1;
+}
+.f3-add-relative-btn.f3-add-relative-as-button:hover { background: #1d4ed8; }
+.f3-add-relative-btn.f3-add-relative-as-button svg { width: 18px; height: 18px; }
+.f3-add-relative-label { white-space: nowrap; }
+
 .lang-fields {
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
