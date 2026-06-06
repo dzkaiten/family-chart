@@ -83,8 +83,9 @@ async function render(): Promise<void> {
 
   const f3Chart = (f3 as any).createChart(treeEl, withSigned)
     .setTransitionTime(800)
-    .setCardXSpacing(250)
-    .setCardYSpacing(150) as Chart;
+    // Spacing must exceed the (now larger) card size or cards overlap.
+    .setCardXSpacing(400)
+    .setCardYSpacing(300) as Chart;
 
   const f3Card = (f3Chart as any).setCard((f3 as any).CardHtml)
     // Card shows the person's details: primary name (display_name), the other-
