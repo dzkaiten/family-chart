@@ -3,6 +3,10 @@ import type { LanguageCode } from './config';
 export interface NameEntry {
   first?: string;
   last?: string;
+  // A single-unit name (e.g. a Chinese name written surname+given with no
+  // separator). When present, it is the canonical form for that script and
+  // `first`/`last` are ignored for display.
+  full?: string;
 }
 
 export type NamesMap = Partial<Record<LanguageCode, NameEntry>> & {

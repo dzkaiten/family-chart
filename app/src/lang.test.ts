@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { toDisplayPerson, mergePersonUpdate, buildFormFields } from './lang';
+import { toDisplayPerson, mergePersonUpdate, buildFormFields, formatDisplayName } from './lang';
 import type { StoredPerson } from './types';
 
 function person(names: StoredPerson['data']['names']): StoredPerson {
@@ -7,118 +7,141 @@ function person(names: StoredPerson['data']['names']): StoredPerson {
 }
 
 describe('toDisplayPerson (read adapter)', () => {
-  it('uses the selected language when present', () => {
-    const d = toDisplayPerson(person({
-      en: { first: 'John', last: 'Smith' },
-      'zh-Hant': { first: '約翰', last: '史密斯' }
-    }), 'zh-Hant');
-    expect(d.data.first_name).toBe('約翰');
-    expect(d.data.last_name).toBe('史密斯');
+  it('maps English to given/family flat fields', () => {
+    const d = toDisplayPerson(person({ en: { first: 'Ada', last: 'Lovelace' } }), 'en');
+    expect(d.data.first_name).toBe('Ada');
+    expect(d.data.last_name).toBe('Lovelace');
   });
 
-  it('falls back to English when the selected language is missing', () => {
-    const d = toDisplayPerson(person({ en: { first: 'John', last: 'Smith' } }), 'zh-Hant');
-    expect(d.data.first_name).toBe('John');
+  it('exposes the single Chinese name + its script for the form', () => {
+    const d = toDisplayPerson(person({ en: { first: 'Ming', last: 'Yao' }, 'zh-Hant': { full: '姚明' } }), 'en');
+    expect(d.data.cn_name).toBe('姚明');
+    expect(d.data.cn_script).toBe('zh-Hant');
   });
 
-  it('falls back to the first available name when neither selected nor English exist', () => {
-    const d = toDisplayPerson(person({ 'zh-Hans': { first: '约翰', last: '史密斯' } }), 'en');
-    expect(d.data.first_name).toBe('约翰');
+  it('reads a Simplified Chinese name and reports its script', () => {
+    const d = toDisplayPerson(person({ 'zh-Hans': { full: '姚明' } }), 'en');
+    expect(d.data.cn_name).toBe('姚明');
+    expect(d.data.cn_script).toBe('zh-Hans');
   });
 
-  it('exposes non-active languages as suffixed fields for the edit form', () => {
-    const d = toDisplayPerson(person({
-      en: { first: 'John', last: 'Smith' },
-      'zh-Hant': { first: '約翰', last: '史密斯' }
-    }), 'en');
-    expect(d.data['first_name__zh-Hant']).toBe('約翰');
-    expect(d.data['last_name__zh-Hant']).toBe('史密斯');
-    expect(d.data['first_name__zh-Hans']).toBe('');
+  it('defaults the script to Traditional when there is no Chinese name', () => {
+    const d = toDisplayPerson(person({ en: { first: 'Ada', last: 'Lovelace' } }), 'en');
+    expect(d.data.cn_name).toBe('');
+    expect(d.data.cn_script).toBe('zh-Hant');
+  });
+
+  it('card display_name is given-first for English', () => {
+    const d = toDisplayPerson(person({ en: { first: 'Ada', last: 'Lovelace' } }), 'en');
+    expect(d.data.display_name).toBe('Ada Lovelace');
+  });
+
+  it('card display_name uses the Chinese name as written under a Chinese view', () => {
+    const d = toDisplayPerson(person({ en: { first: 'Ming', last: 'Yao' }, 'zh-Hant': { full: '姚明' } }), 'zh-Hant');
+    expect(d.data.display_name).toBe('姚明');
+  });
+
+  it('a Chinese view shows the stored Chinese name even if its script differs', () => {
+    const d = toDisplayPerson(person({ 'zh-Hant': { full: '姚明' } }), 'zh-Hans');
+    expect(d.data.display_name).toBe('姚明');
+  });
+
+  it('does not emit the old per-language suffixed fields', () => {
+    const d = toDisplayPerson(person({ en: { first: 'Ada', last: 'Lovelace' } }), 'en');
+    expect(d.data['first_name__zh-Hant']).toBeUndefined();
+  });
+});
+
+describe('formatDisplayName', () => {
+  it('uses a single-unit name as-is', () => {
+    expect(formatDisplayName({ full: '姚明' }, 'zh-Hant')).toBe('姚明');
+  });
+  it('orders given/family by script', () => {
+    expect(formatDisplayName({ first: 'Ada', last: 'Lovelace' }, 'en')).toBe('Ada Lovelace');
+    expect(formatDisplayName({ first: '明', last: '姚' }, 'zh-Hant')).toBe('姚明');
   });
 });
 
 describe('mergePersonUpdate (write adapter)', () => {
   const existing: StoredPerson = {
     id: 'p1',
-    data: { names: { en: { first: 'John', last: 'Smith' } }, gender: 'M' },
+    data: { names: { en: { first: 'Ming', last: 'Yao' } }, gender: 'M' },
     rels: { parents: [], spouses: [], children: [] }
   };
 
-  it('round-trips all configured languages back into the names map', () => {
-    const out = mergePersonUpdate(existing, {
-      first_name: 'Johnny', last_name: 'Smith',
-      'first_name__zh-Hant': '強尼', 'last_name__zh-Hant': '史',
-      'first_name__zh-Hans': '', 'last_name__zh-Hans': '',
-      gender: 'M', birthday: '2000-01-01', avatar: 'tree/p1/x.jpg'
-    }, 'en');
-
-    expect(out.names.en).toEqual({ first: 'Johnny', last: 'Smith' });
-    expect(out.names['zh-Hant']).toEqual({ first: '強尼', last: '史' });
-    expect(out.names['zh-Hans']).toBeUndefined();
-    expect(out.gender).toBe('M');
-    expect(out.birthday).toBe('2000-01-01');
+  it('writes English given/family into names.en', () => {
+    const out = mergePersonUpdate(existing, { first_name: 'Ada', last_name: 'Lovelace' }, 'en');
+    expect(out.names.en).toEqual({ first: 'Ada', last: 'Lovelace' });
   });
 
-  it('does not leak the library flat name fields into stored data', () => {
+  it('stores the single Chinese name under the selected script', () => {
+    const out = mergePersonUpdate(existing, { cn_name: '姚明', cn_script: 'zh-Hant' }, 'en');
+    expect(out.names['zh-Hant']).toEqual({ full: '姚明' });
+    expect(out.names['zh-Hans']).toBeUndefined();
+  });
+
+  it('switching the script consolidates to one Chinese form', () => {
+    const withHant: StoredPerson = {
+      id: 'p1',
+      data: { names: { 'zh-Hant': { full: '姚明' } } },
+      rels: { parents: [], spouses: [], children: [] }
+    };
+    const out = mergePersonUpdate(withHant, { cn_name: '姚明', cn_script: 'zh-Hans' }, 'en');
+    expect(out.names['zh-Hans']).toEqual({ full: '姚明' });
+    expect(out.names['zh-Hant']).toBeUndefined();
+  });
+
+  it('clears the Chinese name when the box is emptied', () => {
+    const withHant: StoredPerson = {
+      id: 'p1',
+      data: { names: { en: { first: 'Ming', last: 'Yao' }, 'zh-Hant': { full: '姚明' } } },
+      rels: { parents: [], spouses: [], children: [] }
+    };
+    const out = mergePersonUpdate(withHant, { cn_name: '', cn_script: 'zh-Hant' }, 'en');
+    expect(out.names['zh-Hant']).toBeUndefined();
+    expect(out.names.en).toEqual({ first: 'Ming', last: 'Yao' });
+  });
+
+  it('does not leak flat form fields into stored data', () => {
     const out = mergePersonUpdate(existing, {
-      first_name: 'Johnny', last_name: 'Smith'
+      first_name: 'Ada', last_name: 'Lovelace', cn_name: '姚明', cn_script: 'zh-Hant'
     }, 'en') as Record<string, unknown>;
     expect(out.first_name).toBeUndefined();
     expect(out.last_name).toBeUndefined();
-    expect(out['first_name__zh-Hant']).toBeUndefined();
+    expect(out.cn_name).toBeUndefined();
+    expect(out.cn_script).toBeUndefined();
   });
 
-  it('clears a previously-set non-active language name when the field is emptied', () => {
-    const withZh: StoredPerson = {
-      id: 'p1',
-      data: { names: { en: { first: 'John', last: 'Smith' }, 'zh-Hant': { first: '約翰', last: '史密斯' } } },
-      rels: { parents: [], spouses: [], children: [] }
-    };
-    const out = mergePersonUpdate(withZh, {
-      first_name: 'John', last_name: 'Smith',
-      'first_name__zh-Hant': '', 'last_name__zh-Hant': ''
+  it('keeps non-name fields (gender, birthday)', () => {
+    const out = mergePersonUpdate(existing, {
+      first_name: 'Ming', last_name: 'Yao', gender: 'M', birthday: '2000-01-01'
     }, 'en');
-    expect(out.names['zh-Hant']).toBeUndefined();
-  });
-
-  it('does not fabricate an active-language name from the display fallback', () => {
-    // Active language zh-Hant, person has only an English name. The unsuffixed
-    // (active) field shows the English fallback; saving must NOT create a
-    // zh-Hant entry equal to the English name.
-    const enOnly: StoredPerson = {
-      id: 'p1',
-      data: { names: { en: { first: 'John', last: 'Smith' } } },
-      rels: { parents: [], spouses: [], children: [] }
-    };
-    const out = mergePersonUpdate(enOnly, {
-      first_name: 'John', last_name: 'Smith',
-      'first_name__en': 'John', 'last_name__en': 'Smith'
-    }, 'zh-Hant');
-    expect(out.names['zh-Hant']).toBeUndefined();
-    expect(out.names.en).toEqual({ first: 'John', last: 'Smith' });
-  });
-
-  it('persists a real active-language name the user actually typed', () => {
-    const enOnly: StoredPerson = {
-      id: 'p1',
-      data: { names: { en: { first: 'John', last: 'Smith' } } },
-      rels: { parents: [], spouses: [], children: [] }
-    };
-    const out = mergePersonUpdate(enOnly, {
-      first_name: '約翰', last_name: '史密斯',
-      'first_name__en': 'John', 'last_name__en': 'Smith'
-    }, 'zh-Hant');
-    expect(out.names['zh-Hant']).toEqual({ first: '約翰', last: '史密斯' });
+    expect(out.gender).toBe('M');
+    expect(out.birthday).toBe('2000-01-01');
   });
 });
 
-describe('buildFormFields (form labels)', () => {
-  it('produces human-readable labels per language', () => {
-    // module default language is 'en'; no setLanguage() (it touches localStorage)
+describe('buildFormFields', () => {
+  it('has English given/family, one Chinese box, and a script select', () => {
     const fields = buildFormFields();
-    const enFirst = fields.find(f => f.name === 'first_name');
-    const zhFirst = fields.find(f => f.name === 'first_name__zh-Hant');
-    expect(enFirst?.label).toMatch(/English/);
-    expect(zhFirst?.label).toMatch(/繁體/);
+    const names = fields.map(f => f.name);
+    expect(names).toContain('first_name');
+    expect(names).toContain('last_name');
+    expect(names).toContain('cn_name');
+    expect(names).toContain('cn_script');
+    // no per-script given/family fields anymore
+    expect(names.some(n => n.includes('__zh'))).toBe(false);
+  });
+
+  it('the script field is a select with Traditional + Simplified options', () => {
+    const script = buildFormFields().find(f => f.name === 'cn_script');
+    expect(script?.type).toBe('select');
+    expect(script?.options?.map(o => o.value)).toEqual(['zh-Hant', 'zh-Hans']);
+  });
+
+  it('labels the English fields as Given/Family', () => {
+    const fields = buildFormFields();
+    expect(fields.find(f => f.name === 'first_name')?.label).toMatch(/Given/);
+    expect(fields.find(f => f.name === 'last_name')?.label).toMatch(/Family/);
   });
 });

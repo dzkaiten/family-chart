@@ -95,7 +95,7 @@ async function render(): Promise<void> {
   if (state.canEdit) {
     // Pass field objects (not bare names) so the form shows readable,
     // per-language labels instead of raw ids like "first_name__zh-Hant".
-    const fields = buildFormFields().map(f => ({ type: f.type, label: f.label, id: f.name }));
+    const fields = buildFormFields().map(f => ({ type: f.type, label: f.label, id: f.name, ...(f.options ? { options: f.options } : {}) }));
     const f3EditTree = f3Chart.editTree();
     f3EditTree
       .setFields(fields)
