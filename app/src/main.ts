@@ -9,7 +9,6 @@ import { downloadJSON, downloadPNG } from './export';
 import { initLanguage, setLanguage, getLanguage } from './lang';
 import { t } from './i18n';
 import type { LanguageCode } from './config';
-import { initAdminBadge } from './admin';
 import { initTree, rerenderForLanguage } from './tree';
 import { renderLoginView, renderPendingView } from './views';
 import { setHidden, showToast } from './ui';
@@ -47,12 +46,9 @@ async function mountTree(session: Session): Promise<void> {
     showToast(`Failed to load tree: ${(err as Error).message}`, 'error');
     viewRoot.innerHTML = `<div class="view-centered"><div class="card"><h2>Could not load tree</h2><p>${(err as Error).message}</p></div></div>`;
   }
-  initAdminBadge(session.role === 'owner');
 }
 
 function showHeaderForUnauthed(): void {
-  setHidden('admin-btn', true);
-  setHidden('admin-badge', true);
   setHidden('logout-btn', true);
   setHidden('download-json-btn', true);
   setHidden('download-png-btn', true);
@@ -75,7 +71,6 @@ function applyChrome(): void {
     if (el && el.textContent !== text) el.textContent = text;
   };
   set('.app-title', t('appTitle'));
-  set('#admin-label', t('pending'));
   set('#download-json-btn', t('downloadJson'));
   set('#download-png-btn', t('downloadPng'));
   set('#logout-btn', t('logout'));

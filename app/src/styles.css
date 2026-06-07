@@ -289,6 +289,19 @@ html, body {
 .f3-add-relative-btn.f3-add-relative-as-button svg { width: 18px; height: 18px; }
 .f3-add-relative-label { white-space: nowrap; }
 
+/* Custom (translatable) photo picker, replacing the browser's native file input. */
+.f3-photo-pick-btn {
+  padding: 6px 12px;
+  border: 1px solid var(--text-color, #fff);
+  background: transparent;
+  color: var(--text-color, #fff);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.f3-photo-pick-btn:hover { background: rgba(255, 255, 255, 0.12); }
+.f3-photo-filename { margin-left: 8px; font-size: 12px; word-break: break-all; }
+
 .lang-fields {
   border: 1px solid var(--color-border);
   border-radius: var(--radius);

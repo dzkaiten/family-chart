@@ -40,6 +40,8 @@ const T = {
   chineseName:     { en: 'Chinese name (optional)', 'zh-Hans': '中文名（可选）', 'zh-Hant': '中文名（可選）' },
   birthday:        { en: 'Birthday',      'zh-Hans': '生日',     'zh-Hant': '生日' },
   profilePhoto:    { en: 'Profile photo', 'zh-Hans': '照片',     'zh-Hant': '照片' },
+  choosePhoto:     { en: 'Choose photo',  'zh-Hans': '选择照片', 'zh-Hant': '選擇照片' },
+  noPhotoChosen:   { en: 'No photo chosen', 'zh-Hans': '未选择照片', 'zh-Hant': '未選擇照片' },
   addRelative:     { en: 'Add relative',  'zh-Hans': '添加亲属', 'zh-Hant': '新增親屬' },
   cancel:          { en: 'Cancel',        'zh-Hans': '取消',     'zh-Hant': '取消' },
   submit:          { en: 'Submit',        'zh-Hans': '提交',     'zh-Hant': '提交' },

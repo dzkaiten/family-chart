@@ -329,12 +329,18 @@ function installPhotoUploadHook(root: HTMLElement): void {
     wrapper.style.margin = '10px 0';
     wrapper.innerHTML = `
       <label class="muted" style="display:block;margin-bottom:6px;">${t('profilePhoto')}</label>
-      <input type="file" accept="image/*" />
+      <button type="button" class="f3-photo-pick-btn">${t('choosePhoto')}</button>
+      <span class="f3-photo-filename muted">${t('noPhotoChosen')}</span>
+      <input type="file" accept="image/*" style="display:none" />
     `;
     const input = wrapper.querySelector('input') as HTMLInputElement;
+    const pickBtn = wrapper.querySelector('.f3-photo-pick-btn') as HTMLButtonElement;
+    const fileNameEl = wrapper.querySelector('.f3-photo-filename') as HTMLElement;
+    pickBtn.addEventListener('click', () => input.click());
     input.addEventListener('change', async () => {
       const file = input.files?.[0];
       if (!file) return;
+      fileNameEl.textContent = file.name;
       try {
         const path = await uploadAvatar(personId, file);
         // Set the avatar text field so the library notices the change
