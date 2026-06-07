@@ -10,15 +10,9 @@ export async function getCurrentSession(): Promise<Session | null> {
   return { email: user.email, role };
 }
 
-export async function sendMagicLink(_email: string): Promise<void> {
+export async function signInWithPassword(email: string, password: string): Promise<void> {
   if (LOCAL_MODE) return;
-  const { error } = await supabase.auth.signInWithOtp({
-    email: _email,
-    options: {
-      emailRedirectTo: window.location.origin + window.location.pathname,
-      shouldCreateUser: true
-    }
-  });
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) throw error;
 }
 

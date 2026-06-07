@@ -59,18 +59,6 @@ export interface TreeDataRow {
   updated_by: string | null;
 }
 
-export interface AccessRequest {
-  id: string;
-  tree_id: string;
-  name: string;
-  email: string;
-  status: 'pending' | 'approved' | 'denied';
-  requested_role: string;
-  requested_at: string;
-  resolved_at: string | null;
-  resolved_by: string | null;
-}
-
 export interface AllowedEmail {
   id: string;
   tree_id: string;

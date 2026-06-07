@@ -1,7 +1,6 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { SUPABASE_URL, SUPABASE_ANON_KEY, TREE_ID } from './config';
 import type {
-  AccessRequest,
   AllowedEmail,
   StoredPerson,
   TreeDataRow,
@@ -88,71 +87,6 @@ export async function fetchMyRole(): Promise<'owner' | 'editor' | null> {
     .maybeSingle();
   if (probe.data) return 'editor';
   return null;
-}
-
-// ---------------------------------------------------------------------------
-// Access requests
-// ---------------------------------------------------------------------------
-
-export async function submitAccessRequest(name: string, email: string): Promise<void> {
-  const { error } = await supabase.from('access_requests').insert({
-    tree_id: TREE_ID,
-    name,
-    email,
-    status: 'pending'
-  });
-  if (error) throw error;
-}
-
-export async function fetchPendingRequests(): Promise<AccessRequest[]> {
-  const { data, error } = await supabase
-    .from('access_requests')
-    .select('*')
-    .eq('tree_id', TREE_ID)
-    .eq('status', 'pending')
-    .order('requested_at', { ascending: true });
-  if (error) throw error;
-  return data ?? [];
-}
-
-export async function approveRequest(req: AccessRequest): Promise<void> {
-  // 1) Add email to allowed_emails
-  const { error: insertErr } = await supabase
-    .from('allowed_emails')
-    .insert({
-      tree_id: req.tree_id,
-      email: req.email,
-      role: req.requested_role || 'editor'
-    });
-  if (insertErr && insertErr.code !== '23505') {
-    // 23505 = unique violation; tolerate re-approve of already-added email
-    throw insertErr;
-  }
-
-  // 2) Mark request approved
-  const { error: updateErr } = await supabase
-    .from('access_requests')
-    .update({
-      status: 'approved',
-      resolved_at: new Date().toISOString()
-    })
-    .eq('id', req.id);
-  if (updateErr) throw updateErr;
-
-  await logAudit('approve_request', { request_id: req.id, email: req.email });
-}
-
-export async function denyRequest(req: AccessRequest): Promise<void> {
-  const { error } = await supabase
-    .from('access_requests')
-    .update({
-      status: 'denied',
-      resolved_at: new Date().toISOString()
-    })
-    .eq('id', req.id);
-  if (error) throw error;
-
-  await logAudit('deny_request', { request_id: req.id, email: req.email });
 }
 
 // ---------------------------------------------------------------------------

@@ -10,7 +10,7 @@ import { initLanguage, setLanguage, getLanguage } from './lang';
 import { t } from './i18n';
 import type { LanguageCode } from './config';
 import { initTree, rerenderForLanguage } from './tree';
-import { renderLoginView, renderPendingView } from './views';
+import { renderLoginView } from './views';
 import { setHidden, showToast } from './ui';
 import type { Session } from './types';
 
@@ -30,8 +30,12 @@ async function mount(session: Session | null): Promise<void> {
     return;
   }
   if (session.role === null) {
+    // Authenticated against Supabase but not in allowed_emails — the account
+    // isn't authorized for this tree (e.g. its email was never allowlisted).
+    // Surface the error and bounce back to the login screen.
     showHeaderForUnauthed();
-    renderPendingView(viewRoot, session.email);
+    showToast(t('notAuthorized'), 'error');
+    await signOut();
     return;
   }
   await mountTree(session);
@@ -92,10 +96,6 @@ logoutBtn.addEventListener('click', async () => {
 
 downloadJsonBtn.addEventListener('click', () => { void downloadJSON(); });
 downloadPngBtn.addEventListener('click', () => { void downloadPNG(); });
-
-document.addEventListener('admin:exit', async () => {
-  if (currentSession?.role) await mountTree(currentSession);
-});
 
 // ---------------------------------------------------------------------------
 // Boot

@@ -6,6 +6,10 @@ export const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
 export const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 export const TREE_ID = import.meta.env.VITE_TREE_ID as string;
 
+// Shared family account email, pre-filled on the login screen. Falls back to ''
+// so the field renders empty (not "undefined") when unset.
+export const FAMILY_EMAIL = (import.meta.env.VITE_FAMILY_EMAIL as string) ?? '';
+
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !TREE_ID) {
   console.error('Missing required environment variables. Check .env.example.');
 }
