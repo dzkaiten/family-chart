@@ -302,7 +302,8 @@ function decorateCard(this: HTMLElement, d: any): void {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'f3-contact-btn';
-    btn.textContent = 'ⓘ';
+    // Crisp SVG info icon (currentColor) — the 'ⓘ' glyph rendered low-res.
+    btn.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><line x1="12" y1="11" x2="12" y2="16"/><circle cx="12" cy="7.5" r="1.1" fill="currentColor" stroke="none"/></svg>';
     btn.title = t('contactPopupTitle');
     btn.addEventListener('click', (e) => {
       e.stopPropagation(); // don't also open the edit form
@@ -322,9 +323,9 @@ function decorateCard(this: HTMLElement, d: any): void {
       kb = document.createElement('button');
       kb.type = 'button';
       kb.className = 'f3-kinship-btn';
-      // Map-pin SVG (currentColor) — "anchor the kinship reference here". An SVG
-      // (not an emoji/glyph) renders crisply with no font dependency.
-      kb.innerHTML = '<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" aria-hidden="true"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z"/></svg>';
+      // Target/bullseye SVG (currentColor) — "the reference everyone's kinship is
+      // measured from". An SVG (not an emoji/glyph) renders crisply, no font dep.
+      kb.innerHTML = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none"/></svg>';
       kb.addEventListener('click', (e) => {
         e.stopPropagation(); // don't also open the edit form
         toggleKinshipSource(personId);
