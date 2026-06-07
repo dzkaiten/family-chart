@@ -87,7 +87,10 @@ async function render(): Promise<void> {
     .setTransitionTime(800)
     // Spacing must exceed the (now larger) card size or cards overlap.
     .setCardXSpacing(400)
-    .setCardYSpacing(300) as Chart;
+    .setCardYSpacing(300)
+    // Keep the focused person's siblings visible — otherwise clicking your own
+    // card (making you the "main" person) hides your brothers/sisters.
+    .setShowSiblingsOfMain(true) as Chart;
 
   const f3Card = (f3Chart as any).setCard((f3 as any).CardHtml)
     // Compute the name from the FLAT fields so newly-added cards (which lack the
