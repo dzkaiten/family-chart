@@ -107,10 +107,13 @@ export function formatDisplayName(entry: NameEntry, code: LanguageCode | null): 
 // that exist for BOTH loaded and just-added people. The read adapter's
 // display_name only exists on loaded data, so newly-added cards lacked it and
 // previously showed only the birthday — computing from the flat fields fixes that.
-export function cardPrimaryName(data: Record<string, unknown>, _lang: LanguageCode = currentLanguage): string {
+export function cardPrimaryName(data: Record<string, unknown>, lang: LanguageCode = currentLanguage): string {
+  const en = formatDisplayName({ first: readString(data.first_name), last: readString(data.last_name) }, 'en');
   const cn = readString(data.cn_name);
-  if (cn) return cn;
-  return formatDisplayName({ first: readString(data.first_name), last: readString(data.last_name) }, 'en');
+  // Primary name follows the UI language: Chinese mode shows the Chinese name,
+  // English mode shows the English name, each falling back to the other.
+  if (isChinese(lang)) return cn || en;
+  return en || cn;
 }
 
 export function cardSecondaryName(data: Record<string, unknown>, lang: LanguageCode = currentLanguage): string {

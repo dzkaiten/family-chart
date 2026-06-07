@@ -320,7 +320,8 @@ html, body {
   justify-content: center;
   align-items: center;
   gap: 8px;
-  margin: 8px 0 4px;
+  /* Top margin clears the absolute close (×) button (top-left, ~30px tall). */
+  margin: 40px 0 4px;
   padding: 10px 14px;
   background: #2563eb;
   color: #fff;
@@ -475,16 +476,17 @@ html, body {
   width: 22px;
   height: 22px;
   padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border: none;
   border-radius: 50%;
   background: rgba(0, 0, 0, 0.45);
   color: #fff;
-  font-size: 12px;
-  line-height: 22px;
-  text-align: center;
   cursor: pointer;
   z-index: 2;
 }
+.f3-kinship-btn svg { display: block; }
 .f3-kinship-btn:hover { background: rgba(0, 0, 0, 0.7); }
 .f3-kinship-btn.active { background: #2563eb; }
 

@@ -322,7 +322,9 @@ function decorateCard(this: HTMLElement, d: any): void {
       kb = document.createElement('button');
       kb.type = 'button';
       kb.className = 'f3-kinship-btn';
-      kb.textContent = '称';
+      // Map-pin SVG (currentColor) — "anchor the kinship reference here". An SVG
+      // (not an emoji/glyph) renders crisply with no font dependency.
+      kb.innerHTML = '<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" aria-hidden="true"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z"/></svg>';
       kb.addEventListener('click', (e) => {
         e.stopPropagation(); // don't also open the edit form
         toggleKinshipSource(personId);
