@@ -179,7 +179,7 @@ async function persistCurrent(): Promise<void> {
       await refreshTree();
     } else {
       console.error('Save failed', err);
-      showToast(`Save failed: ${(err as Error).message}`, 'error');
+      showToast(t('saveFailed').replace('{x}', (err as Error).message), 'error');
     }
   }
 }
@@ -346,7 +346,7 @@ function installPhotoUploadHook(root: HTMLElement): void {
         showToast(t('photoUploaded'));
       } catch (err) {
         console.error(err);
-        showToast(`Upload failed: ${(err as Error).message}`, 'error');
+        showToast(t('uploadFailed').replace('{x}', (err as Error).message), 'error');
       }
     });
 

@@ -60,7 +60,9 @@ const T = {
   // Toasts
   enterEmail:      { en: 'Enter an email address', 'zh-Hans': '请输入邮箱地址', 'zh-Hant': '請輸入電郵地址' },
   enterNameEmail:  { en: 'Please enter both name and email', 'zh-Hans': '请输入姓名和邮箱', 'zh-Hant': '請輸入姓名和電郵' },
-  someoneUpdated:  { en: 'Someone else updated the tree. Refreshing…', 'zh-Hans': '有人更新了家族树，正在刷新…', 'zh-Hant': '有人更新了家族樹，正在重新整理…' }
+  someoneUpdated:  { en: 'Someone else updated the tree. Refreshing…', 'zh-Hans': '有人更新了家族树，正在刷新…', 'zh-Hant': '有人更新了家族樹，正在重新整理…' },
+  saveFailed:      { en: 'Save failed: {x}', 'zh-Hans': '保存失败：{x}', 'zh-Hant': '儲存失敗：{x}' },
+  uploadFailed:    { en: 'Upload failed: {x}', 'zh-Hans': '上传失败：{x}', 'zh-Hant': '上傳失敗：{x}' }
 } satisfies Record<string, Dict>;
 
 export type I18nKey = keyof typeof T;
