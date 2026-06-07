@@ -318,7 +318,7 @@ html, body {
   justify-content: center;
   align-items: center;
   gap: 8px;
-  margin: 34px 0 4px;          /* top margin clears the absolute close (X) button */
+  margin: 8px 0 4px;
   padding: 10px 14px;
   background: #2563eb;
   color: #fff;
