@@ -28,7 +28,7 @@ lives in `src/` (unforked, used as-is). Our application is a separate Vite app i
 | Repo | Visibility | Holds | Role |
 |---|---|---|---|
 | `dzkaiten/family-chart` (this repo) | **Public** | Library (`src/`), app (`app/`), schema (`supabase/`), docs | The app + its build/deploy |
-| `family-tree-backups` (separate) | **Private** | GitHub Actions cron + zero-dep Node scripts + committed JSON | Off-site daily backup of `tree_data.data` |
+| `family-chart-data` (separate) | **Private** | GitHub Actions cron + zero-dep Node scripts + committed **encrypted** JSON | Off-site daily backup of `tree_data.data` (AES-256-GCM at rest) |
 
 The public repo must **never** contain real family data (names, birthdays, photos,
 secrets). All private data lives in Supabase; the only off-site copy is the private
@@ -282,7 +282,7 @@ config is needed.
 4. **Configure env:** `app/.env` with `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`,
    `VITE_TREE_ID`, `VITE_FAMILY_EMAIL` (the shared account). Add the same as GitHub Actions secrets.
 5. **Deploy:** enable Pages (source: GitHub Actions), push to `master` → `deploy.yml` builds + deploys.
-6. **Backups:** stand up the private `family-tree-backups` repo (its own README runbook + secrets).
+6. **Backups:** stand up the private `family-chart-data` repo (its own README runbook + secrets, incl. `BACKUP_ENC_KEY`).
 
 ---
 
@@ -292,15 +292,17 @@ Three layers, weakest to strongest:
 1. **In-session undo/redo** — native to the library.
 2. **In-DB snapshots** — trigger captures `tree_data.data` before every change,
    **last 20 only** (free tier, no auto DB backups, project pauses after ~1 week idle).
-3. **Off-site daily backup** (`family-tree-backups`, private) — GitHub Actions cron
-   (`17 9 * * *`) logs in as the family user, exports `tree_data.data` to committed,
-   deterministically-serialized JSON. Git history = unlimited retention. Restore is a
-   manual, **owner-gated** script (`restore-tree.mjs`) that PATCHes a chosen revision
-   back (non-destructive — the bad state is snapshotted first).
+3. **Off-site daily backup** (`family-chart-data`, private) — GitHub Actions cron
+   (`17 9 * * *`) logs in as the family user, exports `tree_data.data`, and commits it
+   **encrypted** (`backups/tree-data.json.enc`, AES-256-GCM). Git history = unlimited
+   retention. `backups/meta.json` stays plaintext (no PII) as the heartbeat + change
+   signal. Restore is a manual, **owner-gated** script (`restore-tree.mjs`) that
+   decrypts a chosen revision and PATCHes it back (non-destructive — the bad state is
+   snapshotted first).
 
-Design: [`docs/superpowers/specs/2026-06-06-tree-backup-design.md`](superpowers/specs/2026-06-06-tree-backup-design.md).
-Open follow-up: **encrypt the committed JSON at rest** (the private repo currently
-stores plaintext family data) — see ROADMAP.
+Encryption key lives only in the `BACKUP_ENC_KEY` Actions secret + local `.env`, never
+in the repo. Design:
+[`docs/superpowers/specs/2026-06-06-tree-backup-design.md`](superpowers/specs/2026-06-06-tree-backup-design.md).
 
 ---
 
