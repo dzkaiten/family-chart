@@ -13,6 +13,7 @@ import {
 } from './lang';
 import { t, type I18nKey } from './i18n';
 import { kinshipTerm } from './kinship';
+import { AsYouType } from 'libphonenumber-js';
 import { mapExportedToStored, buildOriginalIndex } from './persist';
 import {
   pruneOrphanedAvatars,
@@ -267,7 +268,7 @@ async function persistCurrent(): Promise<void> {
 // how to turn each value into a link (email/phone/socials).
 const CONTACT_FIELDS: { key: string; labelKey: I18nKey; href?: (v: string) => string }[] = [
   { key: 'email',     labelKey: 'email',     href: v => `mailto:${v}` },
-  { key: 'phone',     labelKey: 'phone',     href: v => `tel:${v}` },
+  { key: 'phone',     labelKey: 'phone',     href: v => `tel:${v.replace(/[^\d+]/g, '')}` },
   { key: 'wechat',    labelKey: 'wechat' },
   { key: 'instagram', labelKey: 'instagram', href: v => toSocialUrl(v, 'https://instagram.com/') },
   { key: 'facebook',  labelKey: 'facebook',  href: v => toSocialUrl(v, 'https://facebook.com/') },
@@ -526,6 +527,10 @@ function installPhotoUploadHook(root: HTMLElement): void {
     // Render the "deceased" field as a checkbox; group the contact inputs.
     upgradeDeceasedCheckbox(form);
     groupContactFields(form);
+    // Prefix the social fields so you only type the username.
+    upgradeSocialPrefixes(form);
+    // Live international phone formatting (+country code forced).
+    upgradePhoneFormatter(form);
 
     if (form.querySelector('[data-photo-upload]')) return;
 
@@ -637,7 +642,7 @@ function groupContactFields(form: HTMLElement): void {
   if (wrappers.length === 0) return;
 
   const details = document.createElement('details');
-  details.className = 'lang-fields';
+  details.className = 'f3-contact-group';
   details.setAttribute('data-contact-group', '');
   const summary = document.createElement('summary');
   summary.textContent = t('contactInfo');
@@ -649,4 +654,72 @@ function groupContactFields(form: HTMLElement): void {
 
   wrappers[0].parentElement?.insertBefore(details, wrappers[0]);
   for (const w of wrappers) details.appendChild(w);
+}
+
+// Social handle prefixes — the user types only the username; the value stored
+// is the bare username, and the contact popup prepends the base URL
+// (see CONTACT_FIELDS / toSocialUrl), so display and storage stay consistent.
+const SOCIAL_PREFIXES: Record<string, string> = {
+  instagram: 'instagram.com/',
+  facebook: 'facebook.com/',
+  linkedin: 'linkedin.com/in/'
+};
+
+// Prepend a fixed, non-editable prefix to each social input so only the
+// username is typed. Idempotent (guarded by data-prefix-wired).
+function upgradeSocialPrefixes(form: HTMLElement): void {
+  for (const [key, prefix] of Object.entries(SOCIAL_PREFIXES)) {
+    const input = form.querySelector<HTMLInputElement>(`[name="${key}"]`);
+    if (!input || input.dataset.prefixWired) continue;
+    input.dataset.prefixWired = '1';
+    input.placeholder = 'username';
+    const row = document.createElement('div');
+    row.className = 'f3-social-row';
+    const span = document.createElement('span');
+    span.className = 'f3-social-prefix';
+    span.textContent = prefix;
+    input.parentElement?.insertBefore(row, input);
+    row.appendChild(span);
+    row.appendChild(input); // moves the input into the row, after the prefix
+  }
+}
+
+// Live international phone formatting via libphonenumber-js. Forces a leading
+// "+" (so the international code is always present) and formats as you type:
+// +1 408 123 1234, +86 138 0013 8000, etc. Per-country grouping is handled by
+// the library. Idempotent (guarded by data-phone-wired).
+function upgradePhoneFormatter(form: HTMLElement): void {
+  const input = form.querySelector<HTMLInputElement>('[name="phone"]');
+  if (!input || input.dataset.phoneWired) return;
+  input.dataset.phoneWired = '1';
+  input.type = 'tel';
+  input.placeholder = '+1 408-123-4567';
+
+  const reformat = () => {
+    const raw = input.value;
+    if (raw.trim() === '') return; // allow clearing the field
+    const withCode = raw.startsWith('+') ? raw : '+' + raw;
+    const digits = withCode.replace(/\D/g, '');
+    // US/NANP (country code 1): the requested +1(408)799-9281 parens style.
+    // Everything else: libphonenumber's standard international format.
+    input.value = digits.startsWith('1')
+      ? formatNanp(digits)
+      : new AsYouType().input(withCode);
+  };
+  input.addEventListener('input', reformat);
+  reformat(); // normalise any pre-filled value when the form opens
+}
+
+// Progressive +1 AAA-BBB-CCCC formatter for NANP numbers (the style Google
+// autofill uses). `digits` includes the leading country code 1; up to 10
+// national digits are used.
+function formatNanp(digits: string): string {
+  const nat = digits.slice(1, 11);
+  let out = '+1';
+  if (nat.length > 0) {
+    out += ' ' + nat.slice(0, 3);
+    if (nat.length > 3) out += '-' + nat.slice(3, 6);
+    if (nat.length > 6) out += '-' + nat.slice(6, 10);
+  }
+  return out;
 }

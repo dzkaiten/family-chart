@@ -60,6 +60,7 @@
     "@supabase/supabase-js": "^2.45.4",
     "d3": "^7.9.0",
     "html-to-image": "^1.11.13",
+    "libphonenumber-js": "^1.13.6",
     "relationship.js": "^1.2.9"
   },
   "devDependencies": {

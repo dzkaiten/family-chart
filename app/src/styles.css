@@ -391,6 +391,41 @@ html, body {
 .f3-contact-list dd { margin: 0; font-size: 14px; word-break: break-all; }
 .f3-contact-list a { color: var(--link, #2563eb); }
 
+/* Collapsible "Contact info" group in the edit form. The form is dark-themed
+   (inside .f3), so match it — a subtle border + a label-styled summary — rather
+   than the app's light surface. The inputs/labels inside are library-rendered
+   (.f3-form input / .f3-form-field label) and already match. */
+.f3-contact-group {
+  margin: 8px 0 12px;
+  padding: 6px 12px 4px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+}
+.f3-contact-group > summary {
+  font-weight: bold;
+  font-size: 12px;
+  opacity: 0.8;
+  cursor: pointer;
+  padding: 2px 0;
+}
+.f3-contact-group[open] > summary {
+  margin-bottom: 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+/* Deceased checkbox sits under its (library-rendered) bold label; align it. */
+.f3-deceased-checkbox { margin: 6px 0; }
+
+/* Social fields: a fixed prefix (instagram.com/ …) before the username input. */
+.f3-social-row { display: flex; align-items: center; gap: 4px; }
+.f3-social-row input { flex: 1; min-width: 0; }
+.f3-social-prefix {
+  font-size: 13px;
+  opacity: 0.7;
+  white-space: nowrap;
+  user-select: none;
+}
+
 /* Kinship "set as source" button (称) — top-left of a card, mirroring the
    contact ⓘ button top-right. */
 .f3-kinship-btn {
