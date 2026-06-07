@@ -29,7 +29,7 @@
 - [x] Deploy to GitHub Pages — `deploy.yml` (npm, typecheck + unit tests, `VITE_*` secrets, base path)
 - [x] Live verification: shared-password login renders the tree on the deployed site
 - [x] Off-site daily backup repo (`family-chart-data`, private) — cron export of `tree_data.data` + owner-gated restore script
-- [x] **Backups encrypted at rest** — committed as AES-256-GCM `tree-data.json.enc` (key in `BACKUP_ENC_KEY` secret); migrated to a fresh repo (`family-chart-data`) so no plaintext remains in history; old `family-tree-backups` cron disabled
+- [x] **Backups encrypted at rest** — committed as AES-256-GCM `tree-data.json.enc` (key in `BACKUP_ENC_KEY` secret); migrated to a fresh repo (`family-chart-data`) so no plaintext remains in history; old `family-tree-backups` repo deleted
 
 ---
 
@@ -41,9 +41,6 @@ _(nothing currently in progress)_
 
 ## Cleanup / tech debt
 
-- [ ] **Delete the old `family-tree-backups` repo** — holds plaintext PII in git history;
-      its cron is already disabled. Needs the `delete_repo` scope:
-      `gh auth refresh -s delete_repo` then `gh repo delete dzkaiten/family-tree-backups --yes`.
 - [ ] Remove the unused `access_requests` table + RLS policies from `supabase/schema.sql`
       (leftover from the magic-link/request design; app no longer touches it)
 - [ ] Update `app/README.md` to the current password-auth design (still describes magic-link setup)
