@@ -315,3 +315,17 @@ html, body {
   color: var(--color-muted);
   padding: 0 4px;
 }
+
+/* CJK fallback for card text. The library scopes card text to
+   `.f3 { font-family: 'Roboto', sans-serif }` (src/styles/family-chart.css),
+   and Roboto has no CJK glyphs — so Chinese names rendered as tofu/blank on
+   cards even though they showed fine in the edit form (inputs don't inherit
+   the .f3 font). The library CSS is upstream/unforked, so we override here.
+   The two-class selector (specificity 0,2,0) beats `.f3` (0,1,0) regardless
+   of stylesheet load order. */
+.f3 .card-inner,
+.f3 .card-label {
+  font-family: 'Roboto', 'Noto Sans CJK SC', 'Noto Sans SC', 'PingFang SC',
+    'Microsoft YaHei', 'Hiragino Sans GB', 'Heiti SC', 'WenQuanYi Micro Hei',
+    sans-serif;
+}

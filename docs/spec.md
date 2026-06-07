@@ -1,370 +1,333 @@
-# Family Chart App — Product Spec
+# Family Tree App — System Architecture
 
-## Overview
-
-A free, hosted web app that lets family members view and collaboratively edit a shared family tree. Changes made in the UI are persisted to a database and visible to all family members in real time.
-
----
-
-## Hosting & Infrastructure
-
-| Concern | Solution | Cost |
-|---|---|---|
-| Frontend hosting | GitHub Pages | Free |
-| Database | Supabase (PostgreSQL) | Free tier |
-| File storage | Supabase Storage (profile photos) | Free tier |
-| Auth | Supabase magic link (email) | Free tier |
-| Domain | `dzkaiten.github.io/family-chart` (or custom domain) | Free |
+> **Living document.** This is the cross-session source of truth for *how the app
+> works today*. Update it when architecture changes. For what is built vs. planned
+> see [`docs/roadmap.md`](roadmap.md).
+>
+> **Last updated:** 2026-06-07
 
 ---
 
-## Users & Roles
+## 1. What this is
 
-The tree is **fully private**. Nothing — not the tree, not photos, not names — is visible to anyone who isn't on the `allowed_emails` allowlist.
+A private, free-to-host family tree web app. Family members open one URL, sign in
+with a single shared password, and collaboratively view and edit a shared tree.
+Edits persist to Supabase and are visible to everyone. Names are multilingual
+(English + Chinese), people can have profile photos, and the whole tree is private
+(nothing is visible without signing in).
 
-| Role | How they get access | Permissions |
-|---|---|---|
-| Unauthenticated | Anyone with the URL | See only the login / request-access screen. No tree data, no photos. |
-| Editor | Owner approves their in-app request | View + edit the family tree |
-| Owner | Pre-seeded in `allowed_emails` with `role='owner'` | All editor permissions + see and approve access requests |
-
----
-
-## Authentication
-
-- **Method:** Supabase magic link (passwordless email)
-- **Session:** Persists in the browser (stays logged in across visits on the same device)
-- **Access control:** Supabase Row Level Security (RLS) checks `allowed_emails` on every write
-
-### Login flow
-
-1. Unauthenticated visitor hits the URL → sees a login / request-access screen (no tree data)
-2. Enters email → clicks "Send me a link"
-3. Sees "Check your inbox" confirmation
-4. Clicks link in email → redirected back to the app
-5. **If email is in `allowed_emails`:** tree loads with view + edit access
-6. **If email is not in `allowed_emails`:** sees "Access pending — the owner has been notified" (if a request exists) or is prompted to submit a request
-
-### Access request flow (no email notifications)
-
-1. Visitor clicks "Request Edit Access"
-2. Enters their name + email → submits
-3. Record inserted into `access_requests` table with status `pending`
-4. When the **owner** logs in, a "Pending requests (N)" badge appears in the UI
-5. Owner clicks → sees list of pending requests with name + email → clicks Approve or Deny
-6. On **Approve:** email added to `allowed_emails`, request marked `approved`
-7. On **Deny:** request marked `denied`
-8. Approved user can now log in with a magic link and edit — no automatic notification sent to them (they can try logging in again)
-
-> No external email service required. Owner checks the app for pending requests.
+This repo (`dzkaiten/family-chart`) is a **public** fork of the upstream
+[`family-chart`](https://github.com/donatso/family-chart) D3 library. The library
+lives in `src/` (unforked, used as-is). Our application is a separate Vite app in
+`app/` that consumes the library through a `@lib` alias.
 
 ---
 
-## Core Features
+## 2. Two repositories
 
-### 1. View family tree (allowlisted users only)
-- Only users on `allowed_emails` can view the tree — there is no public view
-- Uses the existing `family-chart` D3.js library for visualization
-- Tree data is fetched only after a successful authenticated session is established
+| Repo | Visibility | Holds | Role |
+|---|---|---|---|
+| `dzkaiten/family-chart` (this repo) | **Public** | Library (`src/`), app (`app/`), schema (`supabase/`), docs | The app + its build/deploy |
+| `family-tree-backups` (separate) | **Private** | GitHub Actions cron + zero-dep Node scripts + committed JSON | Off-site daily backup of `tree_data.data` |
 
-### 2. Edit family tree (editors and owners)
-- Authenticated, allowlisted users can add, edit, and remove people and relationships
-- Changes are saved to Supabase on every action with **optimistic concurrency control**: each `tree_data` row has a `version` integer; saves use `WHERE version = ?` and fail loudly if stale, prompting the user to refresh
-- A snapshot of the previous state is written to `snapshots` before each successful save
-- In-session undo/redo provided natively by the `family-chart` library
-
-### 3. Profile photos (private)
-- Photos live in a **private** Supabase Storage bucket — `<img src>` cannot send auth headers, so we use **signed URLs**
-- The person's `avatar` field stores a **storage path** (e.g. `{tree_id}/{person_id}/{filename}`), not a URL
-- At render time, the app generates a 1-hour signed URL for each path and populates the library's expected `avatar` field
-- Signed URLs are regenerated when the session refreshes or every ~50 minutes
-- Editors upload a photo via a file input in the edit form → uploaded to Supabase Storage → path stored on the person
-- On photo replace or person delete, the old file is removed from storage to prevent orphans
-- Falls back to a gender-specific icon if no photo is set (library default)
-
-### 4. Multilingual names (extensible by language)
-- Each person stores names as a **map keyed by BCP 47 language code** (e.g. `en`, `zh-Hant`, `zh-Hans`, `es`, `ja` — extensible to any language)
-- v1 ships with three language options in the toggle: **English (`en`)**, **中文繁體 (`zh-Hant`)**, **中文简体 (`zh-Hans`)**
-- The set of toggle languages is driven by a config constant — adding a new language is a config change + UI label, no schema change
-- A language toggle in the UI header switches the displayed name across all cards
-- The toggle is a display-only control — names are stored, not auto-translated
-- **Fallback chain:** selected language → tree's `default_language` → first available name (no blank cards)
-- English is required when creating a person; other languages are optional
-- Selected language persists in the browser (localStorage)
-
-#### Adapter layer (read + write)
-
-The `family-chart` library expects flat `first_name` / `last_name` fields. We bridge the gap in both directions without forking the library:
-
-- **On render:** before passing data to the library, map `data.names[activeLang]` → `data.first_name` / `data.last_name` (with fallback chain)
-- **On edit form open:** show extra inputs for each configured language (e.g. 6 inputs total for 3 languages × first/last)
-- **On form submit:** intercept the library's submit, read all language inputs, write back to `data.names.{lang}.{first|last}` and strip the library's flat fields before persisting
-
-### 5. Login / logout
-- Login prompt appears when an unauthenticated user clicks "Edit"
-- Email input → magic link sent → redirected back to app
-- Logout button visible when logged in
-
-### 6. Access request & approval (in-app)
-- Unauthenticated users can submit a request (name + email)
-- Owner sees a "Pending (N)" badge when logged in
-- Owner approves or denies from within the app
-- Approval adds the email to `allowed_emails` — no restart or redeployment needed
-
-### 7. Download tree (data and image)
-
-Two export options, both available to editors and owners only:
-
-#### 7a. Download tree structure (JSON)
-- "Download tree (JSON)" button → browser download of a JSON file
-- File contents:
-  - All people with their `id`, `names` (every language stored), `gender`, `birthday`, and other text fields
-  - All `rels` (relationship graph: parents, spouses, children)
-  - **Excludes** `avatar` paths and any other photo references — relationships and names only
-- Filename: `family-tree-{YYYY-MM-DD}.json`
-- Uses the library's existing `formatDataForExport()` and post-processes to strip photo fields
-- Purpose: portable backup, share without the app, future re-import
-
-#### 7b. Download as image (PNG)
-- "Download as image" button → browser download of a PNG of the rendered tree
-- Captures the **full tree** (not just the visible viewport) at the tree's actual size
-- Includes photos (this is a visual capture; the data export still excludes them)
-- Uses [`html-to-image`](https://github.com/bubkoo/html-to-image) (~25 KB, free, MIT) — smaller and more modern than `html2canvas`
-- Waits for all signed-URL avatar images to finish loading before capture, so photos aren't missing
-- Filename: `family-tree-{YYYY-MM-DD}.png`
-- Purpose: shareable visual snapshot, print, send to non-family members
-- v1 ships PNG only; PDF (would require `jsPDF`) is deferred unless requested
-
-### 8. Version snapshots (safety net)
-- Before every save, the current tree state is written to `snapshots`
-- Retention count is a config constant (default: 20). Older snapshots pruned automatically. Set to `null` for unlimited retention.
-- No restore UI in v1 — owner restores directly via Supabase dashboard if needed
-- Schema includes a `change_summary` field reserved for future use (e.g. diff descriptions, named saves)
+The public repo must **never** contain real family data (names, birthdays, photos,
+secrets). All private data lives in Supabase; the only off-site copy is the private
+backups repo. See §10 and the backup design at
+[`docs/superpowers/specs/2026-06-06-tree-backup-design.md`](superpowers/specs/2026-06-06-tree-backup-design.md).
 
 ---
 
-## Future Considerations (out of scope for v1, but schema-ready)
+## 3. Tech stack
 
-These are intentionally enabled by the v1 data model — adding them later should not require migrations:
-
-- **Filtering:** Toggle-able UI filters (maternal/paternal side, direct ancestors, generation depth). Frontend-only addition.
-- **Multiple named trees:** Schema already scopes everything by `tree_id`. Adding a tree picker is a UI addition.
-- **Additional roles** (viewer, admin): `allowed_emails.role` already exists.
-- **More languages** (Spanish, Japanese, etc.): add a language code to the config — no schema change.
-- **Extra person attributes** (notes, occupation, birthplace, multiple photos, life events): all stored inside the person's `data` JSONB.
-- **Snapshot restore UI:** snapshots already persisted with `saved_by` and reserved `change_summary` field.
-- **Audit history view:** `audit_log` table is populated from v1 even though no UI exposes it yet.
-- **Notification emails on approval:** can be bolted on later via Supabase Edge Function + SMTP.
-
-Out of scope and **not** designed for in v1:
-- Real-time collaborative editing (two people editing simultaneously)
-- Export to GEDCOM or PDF
-- Per-person privacy controls (visibility settings on individuals)
+- **Frontend:** Vanilla TypeScript + Vite. No framework.
+- **Tree rendering:** the `family-chart` D3 library (`src/`), consumed unforked.
+- **Backend:** Supabase — Postgres (PostgREST), Auth (password grant), Storage.
+- **Hosting:** GitHub Pages, built and deployed by GitHub Actions.
+- **Backups:** a separate private repo (GitHub Actions cron, Node 20 built-in `fetch`, no deps).
 
 ---
 
-## Data Model
+## 4. Directory & module map
 
-### Extensibility principles
+### Library (`src/`) — upstream, unforked
+The D3 family-chart engine: `core/` (chart, edit), `renderers/` (incl.
+`card-html.ts` — card text is injected via `innerHTML`), `layout/`, `handlers/`,
+`store/`, `styles/family-chart.css` (all styles scoped under `.f3`). We do not edit
+library source; we adapt around it.
 
-The schema is designed so common future additions don't require migrations:
+### App (`app/`)
+- `index.html` — static shell: header (title, language `<select>`, Download JSON/PNG,
+  Log out buttons — all `hidden` until authed), `#view-root` (login or tree mount),
+  `#toast-root`. Loads `app/src/styles.css` via `<link>`; library CSS is imported
+  through the module graph (see note in `main.ts`).
+- `vite.config.ts` — `root: app/`, `base: VITE_BASE_PATH || '/'`, alias `@lib → ../src`.
 
-- **Multiple trees:** every table has a `tree_id` from day one, even though v1 has a single tree
-- **Roles:** `allowed_emails` has a `role` column, even though v1 only uses `editor` + `owner`
-- **Languages:** names are stored as a language-keyed map in JSONB, not as fixed columns
-- **Per-person extensions:** the `data` JSONB blob holds all person attributes — adding new fields (notes, occupation, birthplace, multiple photos, etc.) needs no schema change
-- **Lifecycle states:** status enums use `text` (not Postgres enums) so new states can be added without ALTER TYPE
-- **Config-driven UI:** language list, snapshot retention count, and similar are app config constants, not hardcoded literals
+**`app/src/`**
 
-### Tables
+| File | Responsibility |
+|---|---|
+| `main.ts` | Boot + orchestration. Resolves session, mounts login vs. tree, wires header controls (language toggle, downloads, logout), subscribes to auth changes. |
+| `config.ts` | Env-var config (`SUPABASE_*`, `TREE_ID`, `FAMILY_EMAIL`), language list, avatar constants. |
+| `auth.ts` | `getCurrentSession`, `signInWithPassword`, `signOut`, `onAuthStateChange`. Honors local mode. |
+| `db.ts` | Supabase client + data layer: `fetchTreeMeta`, `fetchMyRole`, `fetchTreeData`, `saveTreeData` (optimistic lock), `logAudit`. |
+| `local-mode.ts` | Dev-only `?local=true` bypass: in-memory/localStorage tree, fake owner session. |
+| `views.ts` | Renders the single password login view. |
+| `tree.ts` | The heart of the UI: builds the chart, card display, edit form, save loop, photo upload hook, tooltips, form translation. |
+| `lang.ts` | Active language state + the name **read/write adapter** + card name computation. |
+| `i18n.ts` | UI chrome string table `t(key)` over `en`/`zh-Hans`/`zh-Hant`. |
+| `persist.ts` | Pure mapping: library export shape → stored `StoredPerson[]` (`mapExportedToStored`, `buildOriginalIndex`). |
+| `storage.ts` | Avatar storage: `resolveAvatarUrls` (path → signed URL), `uploadAvatar`, `pruneOrphanedAvatars`. |
+| `export.ts` | `downloadJSON` (structure+names, no photos), `downloadPNG` (full-tree image via `html-to-image`). |
+| `ui.ts` | DOM helpers: `el`, `showToast`, `setHidden`. |
+| `types.ts` | Shared types: `PersonData`, `StoredPerson`, `DisplayPerson`, `TreeDataRow`, `Session`, etc. |
+| `*.test.ts` | Vitest unit tests for `lang`, `persist`, `storage`, `export`. |
 
-```
-table: trees
-- id: uuid (primary key)
-- name: text                       ← "Smith Family"
-- default_language: text           ← BCP 47 code, e.g. 'en' (display fallback)
-- created_at: timestamp
-- created_by: uuid (references auth.users)
+### Other
+- `supabase/schema.sql` — full schema, RLS, triggers, storage bucket (run once).
+- `supabase/first-time-setup.sql` — schema + seed in one paste.
+- `.github/workflows/deploy.yml` — build + deploy to Pages.
 
-table: allowed_emails
-- id: uuid (primary key)
-- tree_id: uuid (references trees.id)
-- email: text
-- role: text                       ← 'owner' | 'editor' (room for 'viewer', 'admin' later)
-- created_at: timestamp
-- created_by: uuid (references auth.users)
-- unique (tree_id, email)
+---
 
-table: access_requests
-- id: uuid (primary key)
-- tree_id: uuid (references trees.id)
-- name: text
-- email: text
-- status: text                     ← 'pending' | 'approved' | 'denied' (extensible)
-- requested_role: text             ← defaults to 'editor'
-- requested_at: timestamp
-- resolved_at: timestamp
-- resolved_by: uuid (references auth.users)
+## 5. Runtime data flow
 
-table: tree_data
-- id: uuid (primary key)
-- tree_id: uuid (references trees.id, unique)
-- data: jsonb                      ← array of person objects from family-chart library
-- version: integer                 ← incremented on every save; used for optimistic locking
-- data_version: integer            ← person-object schema version (1 for v1); enables future migrations
-- updated_at: timestamp
-- updated_by: uuid (references auth.users)
+**Boot (`main.ts` → `boot()`):**
+1. `initLanguage()` from localStorage / tree default; set the toggle + translate chrome.
+2. `getCurrentSession()` → mount.
+3. Subscribe via `onAuthStateChange` so sign-in/out re-mounts.
 
-table: snapshots
-- id: uuid (primary key)
-- tree_id: uuid (references trees.id)
-- data: jsonb                      ← copy of tree_data.data before the save that replaced it
-- change_summary: text             ← optional short description (future use)
-- saved_at: timestamp
-- saved_by: uuid (references auth.users)
+**Mount decision (`mount()`):**
+- No session → header hidden, render login view.
+- Session but `role === null` (authed but not allowlisted) → toast "not authorized", sign out.
+- Session with role → `mountTree()`.
 
-table: audit_log
-- id: uuid (primary key)
-- tree_id: uuid (references trees.id)
-- actor: uuid (references auth.users)
-- action: text                     ← 'approve_request' | 'deny_request' | 'revoke_access' | 'restore_snapshot' | ...
-- target: jsonb                    ← flexible payload describing the action's subject
-- created_at: timestamp
+**Tree render (`tree.ts` → `initTree` → `render`):**
+1. `fetchTreeData()` → `TreeDataRow`.
+2. Container gets `class="tree-root f3"` (the `.f3` scope is **required** — the
+   library never adds it and without it nothing styles).
+3. Empty tree → seed one starter person and auto-open its form.
+4. `toDisplayPeople()` maps stored people → flat library shape; `resolveAvatarUrls()`
+   swaps avatar **paths** for 1-hour **signed URLs**.
+5. `f3.createChart(...).setCard(CardHtml).setCardDisplay([...])` with 3 lines:
+   primary name, secondary (other-language) name, birthday.
+6. If editable: build the edit form fields, `setEditFirst(true)`, `setOnChange(scheduleSave)`,
+   install the photo-upload + form-translation MutationObserver.
 
-storage bucket: avatars (private)
-- path: {tree_id}/{person_id}/{filename}
-- private bucket — no public reads. Access via signed URLs only (1-hour expiry).
-- read/write restricted to allowlisted users (editor or owner) for the matching tree_id
-```
+**Edit → save (`scheduleSave` → `persistCurrent`):**
+1. `editTree.exportData()` → library shape.
+2. `mapExportedToStored()` → `StoredPerson[]` (restores avatar paths, folds flat names back into `names` map).
+3. `saveTreeData(stored, version)` — optimistic lock (see §8).
+4. On success: update local row + avatar map, prune orphaned avatars.
+5. On `StaleVersionError`: toast + `refreshTree()`. Other errors: toast.
 
-> Tree-scoping every table from the start means adding multi-tree support is a UI change, not a schema migration.
+---
 
-### Row Level Security (RLS) policies
+## 6. Authentication & authorization (current)
 
-All tables have RLS enabled. The tree is fully private — nothing exposed to anonymous users except the ability to submit an access request.
+**Auth = single shared password.** Magic-link email and the in-app
+access-request/approval flow were **removed** (the schema still defines those
+artifacts — see §7 note). Today:
+
+- One shared **family account** (`VITE_FAMILY_EMAIL`, pre-filled on the login form)
+  with a shared password. `auth.ts.signInWithPassword(email, password)` →
+  `supabase.auth.signInWithPassword`. Session persists (PKCE, autorefresh).
+- The **owner** signs in with their own personal email + password (a second auth
+  user), which is row `role='owner'` in `allowed_emails`.
+- Authorization is enforced by Supabase **RLS** against `allowed_emails`, not by the
+  client. `fetchMyRole()` returns `owner` | `editor` | `null`:
+  - reads its own `allowed_emails` row (owners can; editors can't under RLS),
+  - else probes `tree_data` — a returned row means allowlisted editor,
+  - else `null` → treated as unauthorized, signed out.
+
+There are no per-person view/edit roles in the app: anyone who can sign in can edit.
+Recovery from bad edits is via snapshots/backups (§10), which is why finer roles were
+deemed unnecessary.
+
+### RLS model (`supabase/schema.sql`)
+Helper SQL functions over the JWT email claim:
+- `current_user_email()` — lowercased `auth.jwt() ->> 'email'`.
+- `is_allowlisted(tree_id)` — email present in `allowed_emails` for the tree.
+- `is_owner(tree_id)` — present **and** `role='owner'`.
 
 | Table | SELECT | INSERT | UPDATE | DELETE |
 |---|---|---|---|---|
-| `trees` | allowlisted (editor or owner) | seed only (manual) | owner | nobody |
-| `allowed_emails` | owner only | owner | owner | owner |
-| `access_requests` | owner only | **anyone** (anon — open request form) | owner | nobody |
-| `tree_data` | allowlisted (editor or owner) | seed only (manual) | editor or owner | nobody |
-| `snapshots` | owner only | server-side trigger on `tree_data` update | nobody | server-side prune |
-| `audit_log` | owner only | server-side trigger | nobody | nobody |
-| storage: `avatars` | allowlisted (editor or owner) | editor or owner | editor or owner | editor or owner |
+| `trees` | allowlisted | — (seed) | owner | — |
+| `allowed_emails` | owner | owner | owner | owner |
+| `tree_data` | allowlisted | — (seed) | allowlisted | — |
+| `snapshots` | owner | trigger (definer) | — | trigger prune |
+| `audit_log` | owner | allowlisted | — | — |
+| storage `avatars` | allowlisted | allowlisted | allowlisted | allowlisted |
 
-> "Allowlisted" means the user's auth email exists in `allowed_emails` for the relevant `tree_id`. "Owner" additionally requires `role='owner'`.
+Storage objects are namespaced `{tree_id}/{person_id}/{filename}`; the policy
+extracts `tree_id` from the first path segment.
 
-> "Seed only" rows are inserted manually via the Supabase SQL editor during first-time setup; no application code inserts them.
+---
 
-### Person object (stored in `tree_data.data`)
+## 7. Data model
 
+`tree_data` holds the **entire tree** as one JSONB array (`data`) — the list of
+people. Schema highlights:
+
+- `trees` — id, name, `default_language`.
+- `allowed_emails` — (tree_id, email, role) unique; the allowlist RLS reads.
+- `tree_data` — one row per tree: `data jsonb`, `version int` (optimistic lock),
+  `data_version int` (person-schema version), `updated_by`.
+- `snapshots` — pre-update copies of `data` (trigger-written, last-20 retained).
+- `audit_log` — actor/action/target (written by `logAudit`; no UI surfaces it yet).
+
+> **Vestigial in schema, unused by app:** the `access_requests` table and its RLS
+> policies remain in `schema.sql` from the original magic-link/request design. The
+> current app never reads or writes them. Candidate for removal — see ROADMAP.
+
+### Person object (one element of `tree_data.data`)
 ```json
 {
-  "id": "person-1",
+  "id": "uuid",
   "data": {
     "names": {
-      "en":      { "first": "John",  "last": "Smith" },
-      "zh-Hant": { "first": "約翰",  "last": "史密斯" },
-      "zh-Hans": { "first": "约翰",  "last": "史密斯" }
+      "en": { "first": "John", "last": "Smith" },
+      "zh": { "full": "张文俊" }
     },
     "gender": "M",
-    "birthday": "...",
-    "avatar": "https://[supabase-url]/storage/v1/object/public/avatars/..."
+    "birthday": "1980-01-01",
+    "avatar": "{tree_id}/{person_id}/file.jpg"
   },
-  "rels": { "father": "person-2", "mother": "person-3", "spouses": [], "children": [] }
+  "rels": { "parents": [], "spouses": [], "children": [] }
 }
 ```
 
-- `names` is keyed by BCP 47 language code — any future language is a new key, not a schema change
-- Each entry stores `first` and `last`; other parts (middle name, suffix, courtesy name) can be added as additional keys without breaking existing readers
-- The `family-chart` library's expected flat `first_name`/`last_name` fields are populated at render time by an adapter that reads from the active language with English fallback
-- Anything else useful per person (notes, life events, occupation, multiple photos) goes inside `data` without schema changes
+`names` is a language-keyed map. **English** is structured `{first, last}`.
+**Chinese** is a single-unit `{full}` under the `zh` key (script-agnostic — we accept
+Traditional or Simplified and store as written; legacy `zh-*` keys are still read).
+`avatar` stores a **storage path**, never a URL.
 
 ---
 
-## First-time setup (owner / admin)
+## 8. Key mechanisms
 
-A one-time manual process. Plan on ~30 minutes end-to-end. Each step below is a literal checklist — no code changes required, just dashboard clicks and SQL copy-paste.
+### Name adapter & card display (`lang.ts`)
+The library expects flat `first_name`/`last_name`. We bridge both directions:
+- **Read** (`toDisplayPerson`): `names` → flat `first_name`, `last_name`, `cn_name`,
+  plus precomputed `display_name` / `alt_name`. Drops the `names` map.
+- **Card lines** (`cardPrimaryName`/`cardSecondaryName`): computed from the **flat**
+  fields so freshly-added cards (which lack the precomputed `display_name`) still show
+  a name. `cardPrimaryName` returns the **Chinese name when present** (English only as
+  fallback) — independent of the UI-language toggle, which controls chrome only. The
+  secondary line is the other-language name. CJK names render family-name-first, no space.
+- **Write** (`mergePersonUpdate`, via `persist.ts`): reads the form's flat fields back
+  into the `names` map; English → `names.en`, the one `cn_name` field → `names.zh.full`;
+  strips form-only/legacy keys.
+- The edit form's Chinese field uses `name: 'cn_name'` — the same key the card reads.
 
-### 1. Create a Supabase project
-1. Go to [supabase.com](https://supabase.com) → sign up → **New project**
-2. Pick any name, set a strong database password (save it), choose the closest region
-3. Wait ~2 minutes for it to provision
+### i18n (`i18n.ts`)
+`t(key)` indexes a `T` dict across `en` / `zh-Hans` / `zh-Hant`. `I18nKey = keyof typeof T`
+so removing a key is caught at typecheck. Library-rendered form controls
+(Submit/Cancel/Delete, gender labels) are re-translated by a MutationObserver in `tree.ts`.
 
-### 2. Grab your API credentials
-1. In your Supabase project → **Project Settings** → **API**
-2. Copy the **Project URL** and the **anon public** key — you'll paste these into the app config later
+### Photos (`storage.ts`)
+Private Supabase Storage bucket. `<img>` can't send auth headers, so paths are swapped
+for 1-hour **signed URLs** at render time. Upload happens via a custom file input
+injected into the edit form (the raw `avatar` text field is hidden). Replaced/deleted
+avatars are pruned to avoid orphans. Cards support click-to-expand lightbox.
 
-### 3. Run the schema
-1. In Supabase → **SQL Editor** → **New query**
-2. Paste the contents of `supabase/schema.sql` (provided in the repo) → **Run**
-3. This creates all tables, RLS policies, and triggers (snapshots, audit log, pruning)
+### Concurrency (`db.ts` + trigger)
+Optimistic locking: `saveTreeData` does `UPDATE ... WHERE version = expectedVersion`
+and sets `version+1`. No row updated → `StaleVersionError` → toast + refresh. A DB
+trigger also bumps `version` and `updated_at` defensively.
 
-### 4. Seed your tree and yourself as owner
-In the SQL Editor, run:
-```sql
--- Create your tree
-INSERT INTO trees (name, default_language)
-VALUES ('My Family', 'en')
-RETURNING id;
--- 👉 copy the returned id
-
--- Add yourself as owner
-INSERT INTO allowed_emails (tree_id, email, role)
-VALUES ('<paste tree id>', 'you@example.com', 'owner');
-
--- Create an empty tree data row
-INSERT INTO tree_data (tree_id, data, version, data_version)
-VALUES ('<paste tree id>', '[]'::jsonb, 1, 1);
-```
-
-### 5. Configure Gmail SMTP for magic-link emails
-Supabase's built-in email is throttled to ~2/hour. Use your Gmail (free, 500/day):
-1. In Google: [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords) → create an app password for "Mail" (requires 2FA enabled)
-2. In Supabase → **Authentication** → **Email Templates** → **SMTP Settings**:
-   - Host: `smtp.gmail.com`
-   - Port: `465`
-   - Username: your Gmail address
-   - Password: the app password from step 1
-   - Sender email: your Gmail address
-   - Sender name: e.g. "Family Tree"
-3. Save
-
-### 6. Configure auth redirect URL
-1. In Supabase → **Authentication** → **URL Configuration**
-2. Set **Site URL** to `https://dzkaiten.github.io/family-chart/` (or your custom domain)
-3. Add the same to **Redirect URLs**
-
-### 7. Connect the app
-1. In the repo, copy `.env.example` → `.env`
-2. Fill in `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` from step 2
-3. Add the same as GitHub Actions secrets: repo → **Settings** → **Secrets and variables** → **Actions** → add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`
-
-### 8. Deploy
-1. Push to `main` → GitHub Actions builds and deploys to GitHub Pages
-2. Visit `https://dzkaiten.github.io/family-chart/`
-3. Enter your owner email → click magic link → you're in
-4. Start adding family members. Send the URL to your dad.
+### Local dev mode (`local-mode.ts`)
+`?local=true` **in dev builds only** (`import.meta.env.DEV`, tree-shaken out of prod),
+or `VITE_LOCAL_MODE=true`. Fakes an owner session and stores the tree in
+`localStorage` — runs the whole UI with no Supabase. Not a production auth bypass.
 
 ---
 
-## Build & Deploy
+## 9. Build & deploy
 
-- **Frontend stack:** Vanilla TypeScript + Vite (matches the existing repo, no framework added)
-- **Bundle:** Vite production build, static output to `dist/`
-- **Hosting:** GitHub Pages on the `gh-pages` branch
-- **CI/CD:** GitHub Actions workflow at `.github/workflows/deploy.yml` triggers on push to `main`:
-  1. Install deps (`yarn install --frozen-lockfile`)
-  2. Build with Vite, injecting `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` from repo secrets
-  3. Publish `dist/` to `gh-pages` branch via `peaceiris/actions-gh-pages`
-- **Secrets management:** Supabase URL + anon key live in GitHub Actions secrets and a local `.env` (gitignored). No secrets in the repo.
+- Scripts (`package.json`): `app:dev` (vite app), `app:build` (vite build app),
+  `typecheck` (`tsc -p app/tsconfig.json`), `test:unit` (vitest run).
+- `.github/workflows/deploy.yml` on push to `main`/`master`:
+  checkout → setup-node 20 → `npm install` → `npm run typecheck` + `test:unit` →
+  `npm run app:build` (with `VITE_*` build secrets + `VITE_BASE_PATH=/<repo>/`) →
+  upload `app/dist` → deploy to Pages.
+  > Uses **npm** not yarn (yarn-classic hits a vite/vitest nested-link bug on this
+  > dep set). `package-lock.json` is gitignored, so `npm install` (not `npm ci`).
+- Live URL: `https://dzkaiten.github.io/family-chart/`.
+
+### Environment variables (Vite `VITE_*`)
+| Var | Used by | Notes |
+|---|---|---|
+| `VITE_SUPABASE_URL` | app | Supabase project URL |
+| `VITE_SUPABASE_ANON_KEY` | app | Anon/publishable key |
+| `VITE_TREE_ID` | app | The tree UUID |
+| `VITE_FAMILY_EMAIL` | app | Shared account email, pre-fills login |
+| `VITE_BASE_PATH` | build | `/family-chart/` for Pages; `/` locally |
+| `VITE_LOCAL_MODE` | app | `true` forces local mode |
+
+Local: `app/.env`. CI: GitHub Actions secrets (same names).
+
+### First-time setup (operator)
+
+One-time, ~20 min. Current **password-auth** flow — no SMTP / magic-link / redirect-URL
+config is needed.
+
+1. **Create a Supabase project** → copy the Project URL and the anon/publishable key.
+2. **Schema + seed:** SQL Editor → paste `supabase/first-time-setup.sql` (set `OWNER_EMAIL`
+   to your own login email) → Run → copy the printed `VITE_TREE_ID` from the result grid.
+3. **Create the two auth users** (Authentication → Users → Add user, auto-confirm, set a password):
+   - **Owner** = your `OWNER_EMAIL` (the seed already allowlisted it as `owner`).
+   - **Family** = the shared account email; then allowlist it as an editor —
+     `insert into allowed_emails (tree_id, email, role) values ('<VITE_TREE_ID>', 'family@example.com', 'editor');`
+     Give it the strong shared password you hand to the family.
+4. **Configure env:** `app/.env` with `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`,
+   `VITE_TREE_ID`, `VITE_FAMILY_EMAIL` (the shared account). Add the same as GitHub Actions secrets.
+5. **Deploy:** enable Pages (source: GitHub Actions), push to `master` → `deploy.yml` builds + deploys.
+6. **Backups:** stand up the private `family-tree-backups` repo (its own README runbook + secrets).
 
 ---
 
-## Out of Scope (v1)
+## 10. Backups & recovery
 
-- Mobile-native app (responsive web is enough)
-- In-app snapshot restore UI (schema is ready — just no UI)
-- Notification emails to requesters on approval (no SMTP/email-API dependency in v1)
-- Advanced privacy controls per person
+Three layers, weakest to strongest:
+1. **In-session undo/redo** — native to the library.
+2. **In-DB snapshots** — trigger captures `tree_data.data` before every change,
+   **last 20 only** (free tier, no auto DB backups, project pauses after ~1 week idle).
+3. **Off-site daily backup** (`family-tree-backups`, private) — GitHub Actions cron
+   (`17 9 * * *`) logs in as the family user, exports `tree_data.data` to committed,
+   deterministically-serialized JSON. Git history = unlimited retention. Restore is a
+   manual, **owner-gated** script (`restore-tree.mjs`) that PATCHes a chosen revision
+   back (non-destructive — the bad state is snapshotted first).
+
+Design: [`docs/superpowers/specs/2026-06-06-tree-backup-design.md`](superpowers/specs/2026-06-06-tree-backup-design.md).
+Open follow-up: **encrypt the committed JSON at rest** (the private repo currently
+stores plaintext family data) — see ROADMAP.
+
+---
+
+## 11. Known issues & gotchas
+
+- **CJK glyphs on cards (FIXED):** Chinese names showed in the edit form but rendered
+  as tofu/blank on cards. Root cause: `.f3 { font-family: 'Roboto', sans-serif }`
+  (library CSS) locks card text to a font with no CJK fallback; `<input>` doesn't
+  inherit it so the form looked fine. Fix: `app/src/styles.css` overrides the card
+  text font (`.f3 .card-inner, .f3 .card-label` — specificity 0,2,0, beats `.f3`'s
+  0,1,0 regardless of load order) with a cross-platform CJK fallback stack. Cards now
+  always show the Chinese name as the primary line; `cardPrimaryName` returns the
+  Chinese name when present and no longer keys off the UI-language toggle (the toggle
+  controls chrome only).
+- **`.f3` class is mandatory** on the tree container or nothing styles (the library
+  never adds it).
+- **Library CSS must be imported via the module graph** (`@lib` alias in `main.ts`),
+  not `<link href="../src/...">` (Vite serves that as the SPA fallback — 200 but empty).
+- **Stale docs:** `app/README.md` still describes the removed magic-link +
+  access-request setup, and `schema.sql` keeps the unused `access_requests` table.
+  See ROADMAP.
+
+---
+
+## 12. Reference docs
+
+- Roadmap / status: [`docs/roadmap.md`](roadmap.md)
+- Specs: [`docs/superpowers/specs/`](superpowers/specs/) — password-auth (2026-06-05), tree-backup (2026-06-06)
+- Plans: [`docs/superpowers/plans/`](superpowers/plans/)
+- Data format: [`docs/data-format.md`](data-format.md)
