@@ -281,11 +281,13 @@ config is needed.
 1. **Create a Supabase project** → copy the Project URL and the anon/publishable key.
 2. **Schema + seed:** SQL Editor → paste `supabase/first-time-setup.sql` (set `OWNER_EMAIL`
    to your own login email) → Run → copy the printed `VITE_TREE_ID` from the result grid.
-3. **Create the two auth users** (Authentication → Users → Add user, auto-confirm, set a password):
+3. **Create the two auth users** (Authentication → Users → Add user, auto-confirm, **set a password** — the allowlist row is the role, not the credential):
    - **Owner** = your `OWNER_EMAIL` (the seed already allowlisted it as `owner`).
    - **Family** = the shared account email; then allowlist it as an editor —
      `insert into allowed_emails (tree_id, email, role) values ('<VITE_TREE_ID>', 'family@example.com', 'editor');`
      Give it the strong shared password you hand to the family.
+   - *Migrating from magic-link?* Existing accounts have **no** password — set one
+     here too, or login fails with `invalid_credentials` (see §11).
 4. **Configure env:** `app/.env` with `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`,
    `VITE_TREE_ID`, `VITE_FAMILY_EMAIL` (the shared account). Add the same as GitHub Actions secrets.
 5. **Deploy:** enable Pages (source: GitHub Actions), push to `master` → `deploy.yml` builds + deploys.
@@ -328,9 +330,20 @@ in the repo. Design:
   never adds it).
 - **Library CSS must be imported via the module graph** (`@lib` alias in `main.ts`),
   not `<link href="../src/...">` (Vite serves that as the SPA fallback — 200 but empty).
-- **Stale docs:** `app/README.md` still describes the removed magic-link +
-  access-request setup, and `schema.sql` keeps the unused `access_requests` table.
-  See ROADMAP.
+- **Owner login `invalid_credentials` (magic-link legacy):** the owner account
+  predates password auth — it was a **magic-link (passwordless)** user. The
+  password-auth migration set a password only for the *family* account, so the
+  owner's `signInWithPassword` had nothing to match. Being in `allowed_emails` as
+  `owner` is the *role*, **not** an Auth password. Fix: set a password on the
+  owner Auth user (dashboard reset, or service_role admin API). The backup repo's
+  `scripts/set-owner-password.sh` automates it; `scripts/verify-login.sh` checks
+  both accounts. Symptom is invisible day-to-day because the owner uses the
+  `?local=true` dev bypass and restore had never been exercised.
+- **No in-app password reset; Site URL is stale (`localhost:3000`):** password
+  login needs no redirect config, but recovery/magic links redirect to the Site
+  URL and 404 until it's set (Authentication → URL Configuration).
+- **Stale docs:** `schema.sql` keeps the unused `access_requests` table (see
+  ROADMAP). `app/README.md` was updated to the password-auth flow (2026-06-07).
 
 ---
 

@@ -41,6 +41,7 @@
 - [x] Live verification: shared-password login renders the tree on the deployed site
 - [x] Off-site daily backup repo (`family-chart-data`, private) — cron export of `tree_data.data` + owner-gated restore script
 - [x] **Backups encrypted at rest** — committed as AES-256-GCM `tree-data.json.enc` (key in `BACKUP_ENC_KEY` secret); migrated to a fresh repo (`family-chart-data`) so no plaintext remains in history; old `family-tree-backups` repo deleted
+- [x] **Restore path verified end-to-end** (2026-06-07) — backup-repo tooling (`verify-login.sh`, `decrypt-tree.mjs`, `restore.sh`, `set-owner-password.sh`), all secrets sourced from `pass`. Surfaced + fixed the owner account having **no Auth password** (magic-link legacy); see spec §11
 
 ---
 
@@ -54,7 +55,7 @@ _(nothing currently in progress)_
 
 - [ ] Remove the unused `access_requests` table + RLS policies from `supabase/schema.sql`
       (leftover from the magic-link/request design; app no longer touches it)
-- [ ] Update `app/README.md` to the current password-auth design (still describes magic-link setup)
+- [x] Update `app/README.md` to the current password-auth design (was describing magic-link setup) — 2026-06-07
 - [ ] Revisit snapshot retention (currently 20). Off-site backup now covers catastrophic
       loss; decide whether to raise/parametrize the in-DB retention count.
 

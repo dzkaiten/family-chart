@@ -27,6 +27,14 @@ One-time Supabase setup (owner does this once):
 3. Add that email to `allowed_emails` table with `role = 'editor'`
 4. Owner's personal email must already be in `allowed_emails` with `role = 'owner'`
 
+> **Correction (2026-06-07):** step 4 is incomplete. The owner's "existing
+> account" was created under the old **magic-link** flow and therefore has **no
+> password**, so `signInWithPassword` fails with `invalid_credentials`. A
+> password must be **set on the owner Auth user** (dashboard reset or service_role
+> admin API) — being in `allowed_emails` only grants the role. See spec §11 and
+> the backup repo's `scripts/set-owner-password.sh`. The canonical setup runbook
+> is now spec §9 (which does include "set a password").
+
 ## Auth layer (`auth.ts`)
 
 - Replace `sendMagicLink(email)` with `signInWithPassword(email, password)` using `supabase.auth.signInWithPassword({ email, password })`
