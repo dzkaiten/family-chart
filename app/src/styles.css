@@ -357,9 +357,6 @@ html, body {
 }
 .f3-contact-btn:hover { background: rgba(0, 0, 0, 0.7); }
 
-/* Deceased checkbox in the edit form */
-.f3-deceased-checkbox { width: 16px; height: 16px; cursor: pointer; }
-
 /* Click-to-view contact popup */
 .f3-contact-popup-overlay {
   position: fixed;
@@ -413,8 +410,16 @@ html, body {
   border-bottom: 1px solid rgba(255, 255, 255, 0.12);
 }
 
-/* Deceased checkbox sits under its (library-rendered) bold label; align it. */
-.f3-deceased-checkbox { margin: 6px 0; }
+/* Deceased: a compact checkbox placed inline within the birthday field. */
+.f3-deceased-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 6px 0 0;
+  font-size: 13px;
+  cursor: pointer;
+}
+.f3-deceased-checkbox { width: 16px; height: 16px; margin: 0; cursor: pointer; }
 
 /* Social fields: a fixed prefix (instagram.com/ …) before the username input. */
 .f3-social-row { display: flex; align-items: center; gap: 4px; }
@@ -480,3 +485,103 @@ html, body {
   padding: 0;
 }
 .kinship-chip-clear:hover { background: rgba(255, 255, 255, 0.45); }
+
+/* ============================================================
+   Modern edit-form styling
+   Refines the library's dark .f3-form panel (which we don't fork):
+   filled inputs, soft borders, clear focus rings, micro-labels,
+   modern buttons, consistent rhythm. Scoped under `.f3 .f3-form` so
+   it reliably overrides the library defaults. Refined-minimal on
+   purpose — this form is used by non-technical family members.
+   ============================================================ */
+.f3 .f3-form {
+  --field-bg: rgba(255, 255, 255, 0.05);
+  --field-bg-focus: rgba(255, 255, 255, 0.09);
+  --field-border: rgba(255, 255, 255, 0.14);
+  --field-radius: 8px;
+  --form-accent: #5bbf73;
+}
+
+/* Text-like inputs (not radio/checkbox), textareas, selects */
+.f3 .f3-form input:not([type="radio"]):not([type="checkbox"]),
+.f3 .f3-form textarea,
+.f3 .f3-form select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  margin: 5px 0 14px;
+  background: var(--field-bg);
+  border: 1px solid var(--field-border);
+  border-radius: var(--field-radius);
+  color: #fff;
+  font-size: 14px;
+  line-height: 1.3;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+.f3 .f3-form input::placeholder,
+.f3 .f3-form textarea::placeholder { color: rgba(255, 255, 255, 0.32); }
+
+.f3 .f3-form input:not([type="radio"]):not([type="checkbox"]):focus,
+.f3 .f3-form textarea:focus,
+.f3 .f3-form select:focus {
+  outline: none;
+  border-color: var(--form-accent);
+  background: var(--field-bg-focus);
+  box-shadow: 0 0 0 3px rgba(91, 191, 115, 0.22);
+}
+
+/* Tame the native date-picker icon on the dark field */
+.f3 .f3-form input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  opacity: 0.55;
+  cursor: pointer;
+}
+
+/* Micro-labels: small, quiet, uppercase tracking. Child-combinator +
+   :not() so the inline "Deceased" label and the radio options keep their
+   own (sentence-case) styling. */
+.f3 .f3-form .f3-form-field > label:not(.f3-deceased-inline),
+.f3 .f3-form .f3-info-field-label {
+  display: block;
+  margin-bottom: 3px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  opacity: 0.55;
+}
+
+/* Buttons */
+.f3 .f3-form button {
+  border-radius: var(--field-radius);
+  font-weight: 600;
+  font-size: 14px;
+  padding: 9px 18px;
+  transition: background-color 0.15s ease, border-color 0.15s ease,
+    opacity 0.15s ease, transform 0.05s ease;
+}
+.f3 .f3-form button:active { transform: translateY(1px); }
+.f3 .f3-form button[type="submit"] { background: var(--form-accent); color: #08220f; }
+.f3 .f3-form button[type="submit"]:hover { background: #6fce85; }
+.f3 .f3-form .f3-cancel-btn { background: rgba(255, 255, 255, 0.1); color: #fff; }
+.f3 .f3-form .f3-cancel-btn:hover { background: rgba(255, 255, 255, 0.16); }
+
+/* Gender radios: spaced, sentence-case, accent-tinted */
+.f3 .f3-form .f3-radio-group { display: flex; gap: 18px; margin: 6px 0 14px; }
+.f3 .f3-form .f3-radio-group label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  opacity: 0.9;
+}
+.f3 .f3-form input[type="radio"],
+.f3-deceased-checkbox { accent-color: var(--form-accent, #5bbf73); }
+
+/* Subtle separators / title */
+.f3 .f3-form hr { border: none; border-top: 1px solid rgba(255, 255, 255, 0.1); margin: 14px 0; }
+.f3 .f3-form .f3-form-title { font-size: 15px; font-weight: 700; letter-spacing: 0.01em; }

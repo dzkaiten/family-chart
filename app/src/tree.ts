@@ -598,16 +598,21 @@ function readPersonIdFromForm(form: HTMLElement): string | null {
 }
 
 // The library renders every field as a text input. Replace the "deceased" one
-// with a real checkbox for UX, while keeping the original (hidden) text input
-// as the value the library reads on submit — the same pattern the photo
-// uploader uses for the avatar field. The checkbox writes 'true'/'' into that
-// input (which mergePersonUpdate coerces to a boolean) and dispatches `input`
-// so the library notices the change.
+// with a checkbox placed inline in the birthday field, keeping the original
+// (hidden) text input as the value the library reads on submit (same pattern
+// the photo uploader uses). The checkbox writes 'true'/'' into that input
+// (mergePersonUpdate coerces to boolean) and dispatches `input`. The death-date
+// field is only shown while deceased is checked.
 function upgradeDeceasedCheckbox(form: HTMLElement): void {
   const input = form.querySelector<HTMLInputElement>('[name="deceased"]');
   if (!input || input.dataset.checkboxWired) return;
   input.dataset.checkboxWired = '1';
-  input.style.display = 'none';
+
+  const deceasedField = input.closest('.f3-form-field') as HTMLElement | null;
+  const birthdayField = form.querySelector('[name="birthday"]')
+    ?.closest('.f3-form-field') as HTMLElement | null;
+  const deathField = form.querySelector('[name="death_date"]')
+    ?.closest('.f3-form-field') as HTMLElement | null;
 
   // Initialise from the stored person (robust against the library not
   // populating boolean fields); fall back to whatever value is in the input.
@@ -616,6 +621,19 @@ function upgradeDeceasedCheckbox(form: HTMLElement): void {
   const isDeceased = person ? !!person.data.deceased : input.value === 'true';
   input.value = isDeceased ? 'true' : ''; // keep the hidden value in sync silently
 
+  // Hide the original standalone "Deceased" field; the hidden input it contains
+  // stays in the DOM so the library still reads/persists the value.
+  input.style.display = 'none';
+  if (deceasedField) deceasedField.style.display = 'none';
+
+  const setDeathVisible = (v: boolean) => {
+    if (deathField) deathField.style.display = v ? '' : 'none';
+  };
+  setDeathVisible(isDeceased); // death date only when deceased
+
+  // Inline checkbox + label, placed within the birthday field.
+  const label = document.createElement('label');
+  label.className = 'f3-deceased-inline';
   const checkbox = document.createElement('input');
   checkbox.type = 'checkbox';
   checkbox.className = 'f3-deceased-checkbox';
@@ -623,8 +641,19 @@ function upgradeDeceasedCheckbox(form: HTMLElement): void {
   checkbox.addEventListener('change', () => {
     input.value = checkbox.checked ? 'true' : '';
     input.dispatchEvent(new Event('input', { bubbles: true }));
+    setDeathVisible(checkbox.checked);
+    if (!checkbox.checked) {
+      // No longer deceased → clear any death date too.
+      const dd = form.querySelector<HTMLInputElement>('[name="death_date"]');
+      if (dd && dd.value) {
+        dd.value = '';
+        dd.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    }
   });
-  input.parentElement?.insertBefore(checkbox, input);
+  label.appendChild(checkbox);
+  label.appendChild(document.createTextNode(t('deceased')));
+  (birthdayField ?? deceasedField ?? form).appendChild(label);
 }
 
 // Move the contact inputs into one collapsible <details> fieldset so the form

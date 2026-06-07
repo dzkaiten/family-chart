@@ -47,8 +47,8 @@ const T = {
   photoUploaded:   { en: 'Photo uploaded. Save to apply.', 'zh-Hans': '照片已上传，保存后生效。', 'zh-Hant': '照片已上傳，儲存後生效。' },
 
   // Profile fields — contact + deceased/dates (added 2026-06-07)
-  deceased:        { en: 'Deceased',        'zh-Hans': '已故',           'zh-Hant': '已故' },
-  deathDate:       { en: 'Death date',      'zh-Hans': '忌日',           'zh-Hant': '忌日' },
+  deceased:        { en: 'Passed away',     'zh-Hans': '已故',           'zh-Hant': '已故' },
+  deathDate:       { en: 'Date of passing', 'zh-Hans': '过世日期',       'zh-Hant': '過世日期' },
   contactInfo:     { en: 'Contact info',    'zh-Hans': '联系方式',       'zh-Hant': '聯絡方式' },
   noContactInfo:   { en: 'No contact info', 'zh-Hans': '暂无联系方式',   'zh-Hant': '暫無聯絡方式' },
   contactPopupTitle: { en: 'Contact',       'zh-Hans': '联系方式',       'zh-Hant': '聯絡方式' },
