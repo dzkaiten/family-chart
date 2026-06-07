@@ -275,7 +275,9 @@ html, body {
   justify-content: center;
   align-items: center;
   gap: 8px;
-  margin: 34px 0 4px;
+  /* Edit always sits below Add relative (or a spacer), so it never needs the
+     ✕-clearance — a small top margin keeps the two buttons tightly stacked. */
+  margin: 8px 0 4px;
   padding: 10px 14px;
   background: #6b7280;
   color: #fff;
@@ -532,7 +534,7 @@ html, body {
   --field-bg-focus: rgba(255, 255, 255, 0.09);
   --field-border: rgba(255, 255, 255, 0.14);
   --field-radius: 8px;
-  --form-accent: #5bbf73;
+  --form-accent: #2563eb;
 }
 
 /* Text-like inputs (not radio/checkbox), textareas, selects */
@@ -595,27 +597,38 @@ html, body {
     opacity 0.15s ease, transform 0.05s ease;
 }
 .f3 .f3-form button:active { transform: translateY(1px); }
-.f3 .f3-form button[type="submit"] { background: var(--form-accent); color: #08220f; }
-.f3 .f3-form button[type="submit"]:hover { background: #6fce85; }
+.f3 .f3-form button[type="submit"] { background: #2e6f4e; color: #fff; }
+.f3 .f3-form button[type="submit"]:hover { background: #245839; }
 .f3 .f3-form .f3-cancel-btn { background: rgba(255, 255, 255, 0.1); color: #fff; }
 .f3 .f3-form .f3-cancel-btn:hover { background: rgba(255, 255, 255, 0.16); }
 
 /* Gender radios: spaced, sentence-case, accent-tinted */
-.f3 .f3-form .f3-radio-group { display: flex; gap: 18px; margin: 6px 0 14px; }
+.f3 .f3-form .f3-radio-group { display: flex; gap: 20px; align-items: center; margin: 6px 0 14px; }
 .f3 .f3-form .f3-radio-group label {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   margin: 0;
   font-size: 14px;
   font-weight: 500;
   letter-spacing: 0;
   text-transform: none;
   opacity: 0.9;
+  cursor: pointer;
 }
-/* Zero the library's margin-right:5px so the gap is the only spacing. */
-.f3 .f3-form .f3-radio-group input[type="radio"] { margin: 0; }
-.f3 .f3-form input[type="radio"] { accent-color: var(--form-accent, #5bbf73); }
+/* Fixed size + zeroed margin so the dot sits flush 6px from its label (the
+   library's default margin + unconstrained radio size looked off). */
+.f3 .f3-form .f3-radio-group input[type="radio"] {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  flex: none;
+  accent-color: var(--form-accent, #5bbf73);
+}
+
+/* Dropdown options must be dark-on-light: the select's white text would
+   otherwise render white-on-white (unreadable) in the native option list. */
+.f3 .f3-form select option { color: #1a1a1a; background: #ffffff; }
 
 /* Subtle separators / title */
 .f3 .f3-form hr { border: none; border-top: 1px solid rgba(255, 255, 255, 0.1); margin: 14px 0; }

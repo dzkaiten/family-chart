@@ -544,8 +544,18 @@ function installPhotoUploadHook(root: HTMLElement): void {
     upgradeSocialPrefixes(form);
     // Live international phone formatting (+country code forced).
     upgradePhoneFormatter(form);
+    // The avatar is a storage path, not info — never show it as a link in the
+    // read-only view. Also render the raw status value as Living/Deceased.
+    hidePhotoInfoRow(form);
+    fixStatusInfoRow(form);
 
     if (form.querySelector('[data-photo-upload]')) return;
+
+    // The photo picker belongs only in the editable form (where the avatar input
+    // exists). In the read-only view there is no avatar input — skip it.
+    const avatarField = form.querySelector<HTMLInputElement>('[name="avatar"], [id="avatar"]')
+      ?.closest('.f3-form-field') as HTMLElement | null;
+    if (!avatarField) return;
 
     const personId = readPersonIdFromForm(form);
     if (!personId) return;
@@ -585,18 +595,35 @@ function installPhotoUploadHook(root: HTMLElement): void {
     // Hide the raw "avatar" URL field (confusing — "What is avatar?") and drop
     // the photo uploader in its place. The hidden input still carries the value
     // we set after upload, which the library persists on save.
-    const avatarField = form.querySelector<HTMLInputElement>('[name="avatar"], [id="avatar"]')
-      ?.closest('.f3-form-field') as HTMLElement | null;
-    if (avatarField) {
-      avatarField.style.display = 'none';
-      avatarField.parentElement?.insertBefore(wrapper, avatarField);
-    } else {
-      const btnRow = form.querySelector('.f3-form-buttons');
-      if (btnRow) btnRow.before(wrapper);
-      else form.appendChild(wrapper);
-    }
+    avatarField.style.display = 'none';
+    avatarField.parentElement?.insertBefore(wrapper, avatarField);
   });
   observer.observe(root, { childList: true, subtree: true });
+}
+
+// The avatar is a storage path, not human-facing info. In the read-only view the
+// library would otherwise list "Profile photo" with the raw path as its value —
+// hide that row (matched by its label). The photo still shows on the card.
+function hidePhotoInfoRow(form: HTMLElement): void {
+  const label = t('profilePhoto');
+  form.querySelectorAll<HTMLElement>('.f3-info-field').forEach(row => {
+    const lbl = row.querySelector('.f3-info-field-label');
+    if (lbl && (lbl.textContent || '').trim() === label) row.style.display = 'none';
+  });
+}
+
+// Read-only view: the status field stores 'true'/'' — show Living/Deceased
+// instead of the raw value (the Living/Deceased <select> only exists when editing).
+function fixStatusInfoRow(form: HTMLElement): void {
+  const label = t('status');
+  form.querySelectorAll<HTMLElement>('.f3-info-field').forEach(row => {
+    const lbl = row.querySelector('.f3-info-field-label');
+    if (!lbl || (lbl.textContent || '').trim() !== label) return;
+    const val = row.querySelector<HTMLElement>('.f3-info-field-value');
+    if (!val || val.dataset.statusFixed) return;
+    val.dataset.statusFixed = '1'; // attribute mutation — not observed, prevents infinite loop
+    val.textContent = (val.textContent || '').trim() === 'true' ? t('deceasedStatus') : t('living');
+  });
 }
 
 function readPersonIdFromForm(form: HTMLElement): string | null {
