@@ -19,108 +19,120 @@ This worktree delivers a **pure, heavily-tested engine** (`app/src/kinship/`) wi
 no DOM and no edits to shared rendering code. The UI (a per-person "source"
 toggle that recomputes the whole tree's terms) is wired in afterward — see §8.
 
-## 2. Why an engine, not the library's calc
+## 2. Approach: own the graph-walk, delegate the linguistics
 
-The library's `src/features/kinships/calculate-kinships.ts` produces **Western**
-terms (uncle, 1st cousin) and collapses distinctions Chinese requires: 伯/叔/舅/
-姑父 are all "uncle". Chinese terms depend on dimensions the Western calc discards,
-so we build our own over the same `rels` graph.
+We do **not** hand-author Chinese term tables. We depend on **`relationship.js`**
+(npm `relationship.js`, **MIT**, © 2016 Haole Zheng; ships ESM + CJS) — the
+established, widely-used Chinese kinship calculator. It owns the hard, error-prone
+linguistics: 堂/表, 伯/叔 seniority, 外 (maternal) prefixes, ordinals (二舅), deep
+generations, and regional variants.
 
-## 3. The four dimensions a Chinese term encodes
+**The seam:**
+- **We own** (testable, about *our* data): walking the `rels` graph from source to
+  target and rendering the connection as a Chinese **relationship chain** —
+  base words joined by `的` (e.g. `爸爸的哥哥的儿子`). Crucially, **we choose the
+  seniority word** at each sibling hop (哥哥/弟弟/姐姐/妹妹) from birthdays.
+- **relationship.js owns**: chain → exact term(s).
 
-1. **Generation distance** (辈分) — how many generations up/down from source.
-2. **Branch / side at each split** — paternal vs maternal, and whether the link is
-   through a male or female relative (drives 外, 堂 vs 表, 姑/舅/姨).
-3. **Gender** of the target (and of connecting relatives).
-4. **Seniority** (长幼) — older/younger than the connecting sibling (伯 vs 叔,
-   哥 vs 弟, 姐 vs 妹). Needs birthdays.
+`relationship.js` API (verified):
+`relationship({ text, target, sex, type, reverse, mode })`
+- `text`: the target's chain from the source (words joined by `的`).
+- `target`: source's own chain (empty string = self) — we pass `''`.
+- `sex`: source sex (0 female, 1 male) — affects in-law terms (公公 vs 岳父).
+- `type: 'default'` → returns a **`string[]`** of candidate 称谓.
+- `mode`: `'default'` | built-in regional (`guangdong`, `north`) | custom via the
+  library's `setMode` (see §6 — this is the "modifiable" answer).
 
-## 4. Algorithm
+## 3. The dimensions our chain must capture
 
-`kinshipTerm(sourceId, targetId, people) → KinshipResult`
+The term is determined by these, all of which the chain (or `sex`) encodes:
+
+1. **Generation distance** — number of parent/child hops.
+2. **Branch / side** — paternal vs maternal, male vs female links (the library
+   derives 外 / 堂 / 表 from the chain's father/mother words).
+3. **Gender** of each hop's person (爸爸 vs 妈妈, 儿子 vs 女儿, 哥 vs 姐).
+4. **Seniority** (长幼) — **the part we must decide**: at a sibling hop, elder vs
+   younger by birthday (哥哥/姐姐 vs 弟弟/妹妹). Missing birthday → neutral token +
+   `ambiguous` (see §4.5).
+
+## 4. Algorithm (`app/src/kinship/`)
+
+`kinshipTerm(sourceId, targetId, people, opts?) → KinshipResult`
 
 ```ts
 interface KinshipResult {
-  term: string;       // Chinese term, e.g. "二舅" or a composed descriptive fallback
-  pinyin?: string;    // e.g. "èr jiù"
-  ambiguous?: boolean;// true when seniority unknown or no crisp common term
+  term: string;        // first/best candidate, or composed descriptive fallback
+  candidates: string[];// all candidates relationship.js returned ([] if none)
+  chain: string;       // the 的-joined chain we built (for debugging/UI tooltip)
+  ambiguous: boolean;  // true when seniority unknown, >1 candidate, or fallback used
 }
 ```
 
-Steps:
+1. **Find the connecting path** between source and target over `rels`
+   (parents/children/spouses). Use a nearest-common-ancestor walk: ascend from
+   source and target to find the nearest shared ancestor, giving an up-segment
+   (source→ancestor) and a down-segment (ancestor→target); handle the direct
+   lineal case (one is the other's ancestor/descendant) and the spouse/in-law case
+   (a `spouses` edge somewhere on the path).
+2. **Render the chain** as base Chinese words joined by `的`, from the source's POV:
+   - parent hop → `爸爸` / `妈妈` (by that parent's gender)
+   - child hop → `儿子` / `女儿` (by that child's gender)
+   - spouse hop → `丈夫` / `妻子` (by that spouse's gender)
+   - **sibling hop** → `哥哥`/`弟弟`/`姐姐`/`妹妹` by the sibling's gender **and**
+     elder/younger vs the person we arrived through (birthday compare, §4.5).
+     Prefer emitting an explicit sibling token (not `爸爸的儿子`) so seniority
+     survives into the term.
+3. **Call `relationship.js`** with `{ text: chain, sex: sourceSex, type: 'default',
+   mode }`.
+4. **Map the result:**
+   - exactly 1 candidate → `term` = it, `ambiguous` reflects only §4.5.
+   - >1 candidates → `term` = first, `ambiguous: true`, all in `candidates`.
+   - 0 candidates → **descriptive fallback**: return the readable chain itself
+     (e.g. `高祖父的堂弟`) as `term`, `ambiguous: true`. Never throw, never empty.
+5. **Seniority unknown:** when a sibling hop lacks a birthday on either side, emit
+   the **neutral** token (`兄弟`/`姐妹` — accepted by the library) and set
+   `ambiguous: true`. (This typically yields a candidate set spanning the
+   elder/younger terms, e.g. 伯父/叔父.)
 
-1. **Spouse/in-law normalization.** If the only connection to the target runs
-   through a spouse edge, resolve the target's **blood** relationship to the
-   relevant blood relative, then apply the in-law transformation (e.g. father's
-   sister's husband → 姑父; spouse's father → 岳父/公公 by source gender).
-2. **Common-ancestor split.** Build both ancestor chains; find the nearest common
-   ancestor. The generation depth of source and target below that ancestor, plus
-   the **gender of the two children of the common ancestor** that each side
-   descends through, classify the relationship (same-line vs collateral, paternal
-   vs maternal, 堂 vs 表).
-3. **Direct lineal** (one is the other's ancestor/descendant): use the classical
-   named sequences (§5) by generation distance and side (外 prefix on the maternal
-   line).
-4. **Collateral**: compose from generation distance + side + gender + seniority by
-   rule (§6).
-5. **Seniority**: when the relationship needs older/younger, compare birthdays of
-   the relevant siblings. Missing birthday ⇒ emit the seniority-neutral term and
-   set `ambiguous: true`.
-6. **No crisp term**: for genuinely term-less distant collaterals, return a
-   **composed descriptive term** (e.g. 高祖父的堂弟) with `ambiguous: true` rather
-   than throwing or returning empty.
+No generation cap — depth falls out of the path length and `relationship.js`
+covers deep lineal terms; only genuinely term-less cases hit the §4.4 fallback.
 
-There is **no generation cap.** Lineal lines extend to arbitrary depth via §5;
-collaterals generate by rule; only term-less distant cases degrade to descriptive.
-
-## 5. Lineal named sequences (no cap)
-
-**Ancestors (paternal; prefix 外 for the maternal line):**
-父 → 祖父 → 曾祖父 → 高祖父 → 天祖父 → 烈祖父 → 太祖父 → 远祖父 → 鼻祖父.
-Female counterparts 母/祖母/曾祖母/… Beyond 鼻祖 (9th), fall back to **`{n}世祖`**
-(e.g. 十世祖) with `ambiguous: true`.
-
-**Descendants:**
-子 → 孙 → 曾孙 → 玄孙 → 来孙 → 晜孙 → 仍孙 → 云孙 → 耳孙. Beyond 耳孙, fall back to
-**`{n}世孙`**. Daughter-line descendants of a daughter take 外 (外孙/外孙女).
-
-(Implement the named entries as a table keyed by generation distance + gender +
-maternal flag; the n世 fallback covers the tail.)
-
-## 6. Collateral construction rules (representative, not exhaustive)
-
-- **Parent's siblings:** father's older brother 伯父 / younger brother 叔父;
-  father's sister 姑母; mother's brother 舅父; mother's sister 姨母. Their spouses:
-  伯母/婶母/姑父/舅母/姨父.
-- **Numbering:** where multiple same-type relatives exist and birth order is known,
-  prefix the ordinal (大伯, 二舅, 三姨). Unknown order ⇒ no number, `ambiguous`.
-- **Siblings:** 哥/弟/姐/妹 by gender + seniority. Half-siblings note in `ambiguous`
-  if desired (v1 may treat as full siblings — implementer's call, documented).
-- **Cousins:** same-surname paternal-male line → 堂兄/堂弟/堂姐/堂妹; otherwise
-  (through a female link, or maternal) → 表兄/表弟/表姐/表妹.
-- **Nephews/nieces:** brother's child 侄/侄女; sister's child 外甥/外甥女.
-- **In-laws (§4.1):** 丈夫/妻子; 公公/婆婆 (husband's parents) vs 岳父/岳母 (wife's
-  parents); 嫂/弟妹/姐夫/妹夫; 媳妇/女婿.
-
-These compose with generation prefixes for the grand- tiers (堂 → … , 侄孙, 姑婆,
-舅公, etc.); generate by rule and let the descriptive fallback catch the rest.
-
-## 7. Testing (the heart of this worktree)
+## 5. Testing (the heart of this worktree)
 
 `app/src/kinship/kinship.test.ts` (Vitest), built TDD (red → green):
 
 - A **fixture family** in `StoredPerson[]` shape spanning ≥4 generations with both
   paternal and maternal branches, some birthdays present and some **deliberately
-  missing**, at least one spouse/in-law, and same- vs cross-gender cousin links.
-- A **table of cases** `(sourceId, targetId) → expected { term, ambiguous? }`
-  covering at minimum: father/mother, paternal vs maternal grandparents
-  (爷爷/奶奶 vs 外公/外婆), great- and great-great- grandparents, a `{n}世祖`
-  tail case, 哥/弟/姐/妹, 伯/叔/姑/舅/姨 + their spouses, ordinal numbering (二舅),
-  堂 vs 表 cousins, 侄/侄女/外甥/外甥女, 孙/孙女/外孙, 儿子/女儿, spouse, in-law
-  parents (公婆/岳父母), a seniority-unknown case (asserts neutral term +
-  `ambiguous: true`), and a term-less distant collateral (asserts a non-empty
-  descriptive term + `ambiguous: true`).
-- Pinyin assertions on a representative subset.
+  missing**, ≥1 spouse/in-law, and same- vs cross-gender cousin links.
+- **Chain-builder unit tests** (our owned logic): assert the `的`-chain produced for
+  representative `(source, target)` pairs — including correct elder/younger sibling
+  tokens from birthdays, and the neutral token when a birthday is missing. This is
+  where our correctness lives; it does not depend on the library.
+- **End-to-end tests** through `relationship.js`: `(sourceId, targetId) → term`
+  covering at minimum father/mother, paternal vs maternal grandparents
+  (爷爷/奶奶 vs 外公/外婆), great-grandparents, 哥/弟/姐/妹, 伯/叔/姑/舅/姨,
+  二舅-style ordinal, 堂 vs 表 cousins, 侄/侄女/外甥/外甥女, 孙/外孙, 儿子/女儿,
+  spouse, in-law parents (公婆 vs 岳父母 driven by source `sex`), a deep lineal
+  case, a seniority-unknown case (asserts `ambiguous: true`), and a term-less
+  distant collateral (asserts non-empty descriptive `term` + `ambiguous: true`).
+
+## 6. Trust & modifiability (answers the open questions)
+
+- **Trust** = the library's wide real-world use **plus** our test table. Our owned
+  risk is confined to the chain-builder, which the unit tests pin precisely.
+- **Modifiable** = `relationship.js` is data-driven with built-in regional modes
+  (`guangdong`, `north`) and a `setMode(key, data)` API for custom term sets. We
+  expose `opts.mode` through `kinshipTerm`; family-specific overrides can be added
+  later via `setMode` without forking the library.
+
+## 7. Dependency & build notes
+
+- Add `relationship.js` to `app/`'s dependencies (**npm**, not yarn — this repo
+  uses npm; `package-lock.json` is gitignored). Import the ESM build.
+- If the package ships no TypeScript types, add a minimal ambient declaration
+  (`app/src/kinship/relationship.d.ts`: `declare module 'relationship.js'`) so
+  `npm run typecheck` stays green.
+- Engine is pure (no DOM); tests run under the existing Vitest setup.
 
 ## 8. UI wiring — POST-MERGE INTEGRATION (not this worktree)
 
@@ -129,23 +141,22 @@ Deferred to a sequential pass after Worktrees A and B merge, because it edits th
 reference, the planned UI:
 
 - A **"set as kinship source"** toggle on each person (in the card popup A adds).
-- Selected source persisted in **localStorage** (per-viewer, not in shared tree
-  data).
+- Selected source persisted in **localStorage** (per-viewer, not shared tree data).
 - When a source is set, every card shows the target's term relative to the source
   (extra card line or badge), recomputed on source change; a header chip shows the
   current source with a clear (✕) control.
 - Kinship **UI chrome** strings (button, chip, clear) added to `i18n.ts` during
-  this pass. The engine's output terms are data (Chinese strings + pinyin), not
-  i18n keys.
+  this pass. The engine's output terms are data (Chinese strings), not i18n keys.
 
 ## 9. Files touched (this worktree)
 
-- `app/src/kinship/index.ts` — `kinshipTerm` entry point + `KinshipResult`.
-- `app/src/kinship/path.ts` — graph walk: common ancestor, generation distances,
-  branch/side classification, spouse/in-law normalization.
-- `app/src/kinship/terms.ts` — lineal sequences + collateral construction +
-  pinyin + descriptive fallback.
-- `app/src/kinship/kinship.test.ts` — fixture + case table.
+- `app/src/kinship/index.ts` — `kinshipTerm` entry point + `KinshipResult`; calls
+  `relationship.js`; result mapping + descriptive fallback (§4.4).
+- `app/src/kinship/chain.ts` — the owned graph-walk: path-find + render the
+  `的`-joined chain incl. birthday-driven seniority (§4.1–4.2, §4.5).
+- `app/src/kinship/relationship.d.ts` — ambient type for the dep if needed.
+- `app/src/kinship/kinship.test.ts` — fixture + chain-builder + end-to-end tables.
+- `app/package.json` — add `relationship.js` dependency.
 - `docs/spec.md` / `docs/roadmap.md` — append this feature (own section / entries).
 
 **Not touched here:** `types.ts`, `lang.ts`, `i18n.ts`, `tree.ts`, `styles.css`
@@ -155,5 +166,7 @@ is the two docs.
 ## 10. Out of scope / non-goals
 
 - No UI in this worktree (see §8).
-- No regional/dialect variants beyond standard Mandarin terms.
-- Half-/step- relationship nuance beyond what §6 notes (documented if simplified).
+- **Pinyin** output deferred (would need a pinyin dep); `KinshipResult` omits it
+  for v1.
+- Regional mode defaults to `'default'`; custom family overrides are a later add.
+- Half-/step- relationship nuance beyond what the chain naturally expresses.
