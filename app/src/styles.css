@@ -329,3 +329,64 @@ html, body {
     'Microsoft YaHei', 'Hiragino Sans GB', 'Heiti SC', 'WenQuanYi Micro Hei',
     sans-serif;
 }
+
+/* Deceased people: dim + slightly desaturate the card, keeping text legible. */
+.f3 .card-deceased .card-inner {
+  opacity: 0.6;
+  filter: grayscale(0.4);
+}
+
+/* Contact-info button (ⓘ) on a card — top-right corner. The card is a
+   transform containing block, so absolute positioning anchors to it. */
+.f3-contact-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  font-size: 13px;
+  line-height: 22px;
+  text-align: center;
+  cursor: pointer;
+  z-index: 2;
+}
+.f3-contact-btn:hover { background: rgba(0, 0, 0, 0.7); }
+
+/* Deceased checkbox in the edit form */
+.f3-deceased-checkbox { width: 16px; height: 16px; cursor: pointer; }
+
+/* Click-to-view contact popup */
+.f3-contact-popup-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.f3-contact-popup {
+  background: var(--color-bg, #fff);
+  color: var(--color-text, #111);
+  border: 1px solid var(--color-border, #ddd);
+  border-radius: var(--radius, 8px);
+  padding: 18px 22px;
+  min-width: 240px;
+  max-width: 90vw;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+}
+.f3-contact-popup h3 { margin: 0 0 10px; font-size: 16px; }
+.f3-contact-list {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 12px;
+  margin: 0;
+}
+.f3-contact-list dt { color: var(--color-muted, #666); font-size: 13px; }
+.f3-contact-list dd { margin: 0; font-size: 14px; word-break: break-all; }
+.f3-contact-list a { color: var(--link, #2563eb); }

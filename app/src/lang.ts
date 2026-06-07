@@ -187,25 +187,98 @@ export function mergePersonUpdate(
   }
 
   // Keep non-name fields (gender, birthday, avatar, …); drop name + form-only keys.
+  // Contact strings: trim and drop empty values (don't persist "").
+  // deceased: coerce to boolean; delete when false/empty.
+  // death_date: trim; delete when empty.
+  const CONTACT_KEYS = new Set(['email', 'phone', 'wechat', 'instagram', 'facebook', 'linkedin']);
   const rest: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(formData)) {
     if (key === 'first_name' || key === 'last_name' || key === 'cn_name') continue;
     if (key === 'cn_script') continue; // legacy from the script-dropdown version
     if (key.startsWith('first_name__') || key.startsWith('last_name__')) continue; // legacy
     if (key === 'names' || key === 'display_name' || key === 'alt_name') continue;
+
+    if (key === 'deceased') {
+      const boolVal = value === true || value === 'true';
+      if (boolVal) rest[key] = true;
+      // else: omit (delete key)
+      continue;
+    }
+
+    if (key === 'death_date') {
+      const s = readString(value);
+      if (s) rest[key] = s;
+      // else: omit
+      continue;
+    }
+
+    if (CONTACT_KEYS.has(key)) {
+      const s = readString(value);
+      if (s) rest[key] = s;
+      // else: omit — don't persist empty strings
+      continue;
+    }
+
     rest[key] = value;
   }
 
-  return {
+  const merged: PersonData = {
     ...(existing?.data ?? {}),
     ...rest,
     names: baseNames
   };
+
+  // Explicitly remove keys that were cleared by the form (omitted from rest).
+  // The spread of existing?.data above would otherwise preserve the old value.
+  if ('deceased' in formData && !rest.deceased) delete merged.deceased;
+  if ('death_date' in formData && !rest.death_date) delete merged.death_date;
+  for (const key of CONTACT_KEYS) {
+    if (key in formData && !rest[key]) delete (merged as Record<string, unknown>)[key];
+  }
+
+  return merged;
 }
 
 function readString(v: unknown): string {
   if (typeof v === 'string') return v.trim();
   return '';
+}
+
+// ---------------------------------------------------------------------------
+// Form fields the family-chart library renders ({type, label, name})
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Life-dates helper (card line 3)
+// ---------------------------------------------------------------------------
+
+/**
+ * Return a life-date string for card display.
+ * Living with birthday → birth year ("1940").
+ * Deceased with both → "1940–2012".
+ * Deceased, only death → "–2012".
+ * Deceased, only birth → "1940–".
+ * Otherwise → "".
+ */
+export function lifeDates(data: Record<string, unknown>): string {
+  const birthYear = yearFrom(data.birthday);
+  const deathYear = yearFrom(data.death_date);
+  const deceased = !!data.deceased;
+
+  if (!deceased) {
+    return birthYear ?? '';
+  }
+  // Deceased branch
+  if (birthYear && deathYear) return `${birthYear}–${deathYear}`;
+  if (deathYear) return `–${deathYear}`;
+  if (birthYear) return `${birthYear}–`;
+  return '';
+}
+
+function yearFrom(v: unknown): string | null {
+  if (typeof v !== 'string' || !v) return null;
+  const m = v.match(/^(\d{4})/);
+  return m ? m[1] : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -221,11 +294,21 @@ export interface FormFieldConfig {
 
 export function buildFormFields(): FormFieldConfig[] {
   return [
-    { type: 'text', label: t('firstName'), name: 'first_name' },
-    { type: 'text', label: t('lastName'), name: 'last_name' },
+    { type: 'text',     label: t('firstName'),  name: 'first_name' },
+    { type: 'text',     label: t('lastName'),   name: 'last_name' },
     // One optional Chinese name; accepts Traditional or Simplified, stored as-is.
-    { type: 'text', label: t('chineseName'), name: 'cn_name' },
-    { type: 'text', label: t('birthday'), name: 'birthday' },
-    { type: 'text', label: t('profilePhoto'), name: 'avatar' }
+    { type: 'text',     label: t('chineseName'), name: 'cn_name' },
+    { type: 'text',     label: t('birthday'),   name: 'birthday' },
+    // Deceased flag + death date (upgraded to date picker by tree.ts MutationObserver)
+    { type: 'text',     label: t('deceased'),   name: 'deceased' },
+    { type: 'text',     label: t('deathDate'),  name: 'death_date' },
+    // Contact info block
+    { type: 'text',     label: t('email'),       name: 'email' },
+    { type: 'text',     label: t('phone'),       name: 'phone' },
+    { type: 'text',     label: t('wechat'),      name: 'wechat' },
+    { type: 'text',     label: t('instagram'),   name: 'instagram' },
+    { type: 'text',     label: t('facebook'),    name: 'facebook' },
+    { type: 'text',     label: t('linkedin'),    name: 'linkedin' },
+    { type: 'text',     label: t('profilePhoto'), name: 'avatar' }
   ];
 }

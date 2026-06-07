@@ -46,6 +46,18 @@ const T = {
   clickFullSize:   { en: 'Click to view full size', 'zh-Hans': '点击查看原图', 'zh-Hant': '點擊查看原圖' },
   photoUploaded:   { en: 'Photo uploaded. Save to apply.', 'zh-Hans': '照片已上传，保存后生效。', 'zh-Hant': '照片已上傳，儲存後生效。' },
 
+  // Profile fields — contact + deceased/dates (added 2026-06-07)
+  deceased:        { en: 'Deceased',        'zh-Hans': '已故',           'zh-Hant': '已故' },
+  deathDate:       { en: 'Death date',      'zh-Hans': '忌日',           'zh-Hant': '忌日' },
+  contactInfo:     { en: 'Contact info',    'zh-Hans': '联系方式',       'zh-Hant': '聯絡方式' },
+  noContactInfo:   { en: 'No contact info', 'zh-Hans': '暂无联系方式',   'zh-Hant': '暫無聯絡方式' },
+  contactPopupTitle: { en: 'Contact',       'zh-Hans': '联系方式',       'zh-Hant': '聯絡方式' },
+  phone:           { en: 'Phone',           'zh-Hans': '电话',           'zh-Hant': '電話' },
+  wechat:          { en: 'WeChat',          'zh-Hans': '微信',           'zh-Hant': '微信' },
+  instagram:       { en: 'Instagram',       'zh-Hans': 'Instagram',      'zh-Hant': 'Instagram' },
+  facebook:        { en: 'Facebook',        'zh-Hans': 'Facebook',       'zh-Hant': 'Facebook' },
+  linkedin:        { en: 'LinkedIn',        'zh-Hans': 'LinkedIn',       'zh-Hant': 'LinkedIn' },
+
   // Toasts
   enterEmail:      { en: 'Enter an email address', 'zh-Hans': '请输入邮箱地址', 'zh-Hant': '請輸入電郵地址' },
   enterNameEmail:  { en: 'Please enter both name and email', 'zh-Hans': '请输入姓名和邮箱', 'zh-Hant': '請輸入姓名和電郵' },

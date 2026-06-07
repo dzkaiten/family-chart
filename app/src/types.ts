@@ -18,6 +18,16 @@ export interface PersonData {
   gender?: 'M' | 'F' | string;
   birthday?: string;
   avatar?: string; // storage path (e.g. "{tree_id}/{person_id}/file.jpg"), not a URL
+  // Contact info (added 2026-06-07)
+  email?: string;
+  phone?: string;
+  wechat?: string;
+  instagram?: string;
+  facebook?: string;
+  linkedin?: string;
+  // Deceased / life dates (added 2026-06-07)
+  deceased?: boolean;
+  death_date?: string; // ISO YYYY-MM-DD
   [key: string]: unknown;
 }
 

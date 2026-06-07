@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { toDisplayPerson, mergePersonUpdate, buildFormFields, formatDisplayName } from './lang';
+import { toDisplayPerson, mergePersonUpdate, buildFormFields, formatDisplayName, lifeDates } from './lang';
 import type { StoredPerson } from './types';
 
 function person(names: StoredPerson['data']['names']): StoredPerson {
@@ -109,5 +109,132 @@ describe('buildFormFields', () => {
     const fields = buildFormFields();
     expect(fields.find(f => f.name === 'first_name')?.label).toMatch(/First name/);
     expect(fields.find(f => f.name === 'last_name')?.label).toMatch(/Last name/);
+  });
+
+  it('includes deceased, death_date, and all six contact fields with non-empty labels', () => {
+    const fields = buildFormFields();
+    const names = fields.map(f => f.name);
+    expect(names).toContain('deceased');
+    expect(names).toContain('death_date');
+    expect(names).toContain('email');
+    expect(names).toContain('phone');
+    expect(names).toContain('wechat');
+    expect(names).toContain('instagram');
+    expect(names).toContain('facebook');
+    expect(names).toContain('linkedin');
+    // Every field must have a non-empty label
+    for (const f of fields) {
+      expect(f.label, `field ${f.name} must have a non-empty label`).toBeTruthy();
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// lifeDates helper
+// ---------------------------------------------------------------------------
+
+describe('lifeDates', () => {
+  it('living, birthday known → birth year only', () => {
+    expect(lifeDates({ birthday: '1940-06-15', deceased: false })).toBe('1940');
+  });
+
+  it('living, no birthday → empty string', () => {
+    expect(lifeDates({ deceased: false })).toBe('');
+  });
+
+  it('deceased, both known → "birth–death"', () => {
+    expect(lifeDates({ birthday: '1940-06-15', deceased: true, death_date: '2012-03-01' })).toBe('1940–2012');
+  });
+
+  it('deceased, only death known → "–death"', () => {
+    expect(lifeDates({ deceased: true, death_date: '2012-03-01' })).toBe('–2012');
+  });
+
+  it('deceased, only birth known → "birth–"', () => {
+    expect(lifeDates({ deceased: true, birthday: '1940-06-15' })).toBe('1940–');
+  });
+
+  it('deceased, neither known → empty string', () => {
+    expect(lifeDates({ deceased: true })).toBe('');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// mergePersonUpdate: contact fields + deceased/death_date round-trip
+// ---------------------------------------------------------------------------
+
+describe('mergePersonUpdate — contact fields and deceased', () => {
+  const base: StoredPerson = {
+    id: 'p1',
+    data: { names: { en: { first: 'Alice', last: 'Smith' } } },
+    rels: { parents: [], spouses: [], children: [] }
+  };
+
+  it('stores contact fields, trims whitespace, drops empty strings', () => {
+    const out = mergePersonUpdate(base, {
+      first_name: 'Alice', last_name: 'Smith',
+      email: '  alice@example.com  ',
+      phone: '',
+      wechat: 'alice_wechat',
+      instagram: '',
+      facebook: '',
+      linkedin: 'alice-li'
+    }, 'en') as Record<string, unknown>;
+    expect(out.email).toBe('alice@example.com');
+    expect(out.wechat).toBe('alice_wechat');
+    expect(out.linkedin).toBe('alice-li');
+    // Empty strings must not be stored
+    expect(out.phone).toBeUndefined();
+    expect(out.instagram).toBeUndefined();
+    expect(out.facebook).toBeUndefined();
+  });
+
+  it('stores deceased as boolean true', () => {
+    const out = mergePersonUpdate(base, { first_name: 'Alice', last_name: 'Smith', deceased: 'true' }, 'en') as Record<string, unknown>;
+    expect(out.deceased).toBe(true);
+  });
+
+  it('stores deceased:true when form sends boolean true', () => {
+    const out = mergePersonUpdate(base, { first_name: 'Alice', last_name: 'Smith', deceased: true }, 'en') as Record<string, unknown>;
+    expect(out.deceased).toBe(true);
+  });
+
+  it('drops deceased key when false/absent', () => {
+    const withDeceased: StoredPerson = {
+      id: 'p1',
+      data: { names: { en: { first: 'Alice', last: 'Smith' } }, deceased: true } as any,
+      rels: { parents: [], spouses: [], children: [] }
+    };
+    const out = mergePersonUpdate(withDeceased, { first_name: 'Alice', last_name: 'Smith', deceased: false }, 'en') as Record<string, unknown>;
+    expect(out.deceased).toBeUndefined();
+  });
+
+  it('stores death_date as trimmed string', () => {
+    const out = mergePersonUpdate(base, { first_name: 'Alice', last_name: 'Smith', death_date: '2012-03-01' }, 'en') as Record<string, unknown>;
+    expect(out.death_date).toBe('2012-03-01');
+  });
+
+  it('drops death_date when empty', () => {
+    const out = mergePersonUpdate(base, { first_name: 'Alice', last_name: 'Smith', death_date: '' }, 'en') as Record<string, unknown>;
+    expect(out.death_date).toBeUndefined();
+  });
+
+  it('toDisplayPerson passes through contact fields from StoredPerson', () => {
+    const stored: StoredPerson = {
+      id: 'p2',
+      data: {
+        names: { en: { first: 'Bob', last: 'Jones' } },
+        email: 'bob@example.com',
+        phone: '555-1234',
+        deceased: true,
+        death_date: '2020-05-10'
+      } as any,
+      rels: { parents: [], spouses: [], children: [] }
+    };
+    const d = toDisplayPerson(stored, 'en');
+    expect(d.data.email).toBe('bob@example.com');
+    expect(d.data.phone).toBe('555-1234');
+    expect(d.data.deceased).toBe(true);
+    expect(d.data.death_date).toBe('2020-05-10');
   });
 });

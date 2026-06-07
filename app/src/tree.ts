@@ -7,9 +7,10 @@ import {
   cardPrimaryName,
   cardSecondaryName,
   getLanguage,
+  lifeDates,
   toDisplayPeople
 } from './lang';
-import { t } from './i18n';
+import { t, type I18nKey } from './i18n';
 import { mapExportedToStored, buildOriginalIndex } from './persist';
 import {
   pruneOrphanedAvatars,
@@ -100,13 +101,14 @@ async function render(): Promise<void> {
     .setCardDisplay([
       (d: any) => cardPrimaryName(d.data),
       (d: any) => cardSecondaryName(d.data),
-      (d: any) => (typeof d.data?.birthday === 'string' ? d.data.birthday : '')
+      // Line 3: life dates ("1940–2012" for deceased, birth year for living).
+      (d: any) => lifeDates(d.data)
     ])
     .setMiniTree(true)
     // Bigger cards + a larger photo so the picture is easy to see.
     .setCardDim({ width: 300, height: 150, img_width: 130, img_height: 130 })
-    // Make each card's photo click-to-expand to full (original) size.
-    .setOnCardUpdate(makePhotoExpandable);
+    // Per-card decoration: click-to-expand photo, deceased dimming, contact popup.
+    .setOnCardUpdate(decorateCard);
 
   if (state.canEdit) {
     // Pass field objects (not bare names) so the form shows readable,
@@ -188,8 +190,108 @@ async function persistCurrent(): Promise<void> {
 // Photo: click a card's picture to view it at full (original) size
 // ---------------------------------------------------------------------------
 
-// Runs per card via setOnCardUpdate (`this` is the card node). Attaches a
-// click-to-expand handler to the card's <img> exactly once.
+// The contact fields shown in the click-to-view popup, in display order, with
+// how to turn each value into a link (email/phone/socials).
+const CONTACT_FIELDS: { key: string; labelKey: I18nKey; href?: (v: string) => string }[] = [
+  { key: 'email',     labelKey: 'email',     href: v => `mailto:${v}` },
+  { key: 'phone',     labelKey: 'phone',     href: v => `tel:${v}` },
+  { key: 'wechat',    labelKey: 'wechat' },
+  { key: 'instagram', labelKey: 'instagram', href: v => toSocialUrl(v, 'https://instagram.com/') },
+  { key: 'facebook',  labelKey: 'facebook',  href: v => toSocialUrl(v, 'https://facebook.com/') },
+  { key: 'linkedin',  labelKey: 'linkedin',  href: v => toSocialUrl(v, 'https://www.linkedin.com/in/') }
+];
+
+function toSocialUrl(v: string, base: string): string {
+  return /^https?:\/\//i.test(v) ? v : base + v.replace(/^@/, '');
+}
+
+function hasContactInfo(person: Record<string, unknown>): boolean {
+  return CONTACT_FIELDS.some(f => {
+    const v = person[f.key];
+    return typeof v === 'string' && v.trim() !== '';
+  });
+}
+
+// Per-card decoration (setOnCardUpdate): `this` is the card_cont node, `d` the
+// TreeDatum (person fields at d.data.data). Wires the photo lightbox, dims
+// deceased cards, and adds a contact-info button when there's anything to show.
+function decorateCard(this: HTMLElement, d: any): void {
+  makePhotoExpandable.call(this);
+
+  const person = (d?.data?.data ?? {}) as Record<string, unknown>;
+  const cardEl = this.querySelector('.card') as HTMLElement | null;
+  if (!cardEl) return;
+
+  cardEl.classList.toggle('card-deceased', !!person.deceased);
+
+  if (hasContactInfo(person) && !cardEl.querySelector('.f3-contact-btn')) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'f3-contact-btn';
+    btn.textContent = 'ⓘ';
+    btn.title = t('contactPopupTitle');
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation(); // don't also open the edit form
+      openContactPopup(person);
+    });
+    cardEl.appendChild(btn);
+  }
+}
+
+// A small overlay listing a person's contact details. Dismiss on backdrop
+// click or Escape. Built app-side (no library changes), like the photo lightbox.
+function openContactPopup(person: Record<string, unknown>): void {
+  const overlay = document.createElement('div');
+  overlay.className = 'f3-contact-popup-overlay';
+  const box = document.createElement('div');
+  box.className = 'f3-contact-popup';
+
+  const title = document.createElement('h3');
+  title.textContent = t('contactPopupTitle');
+  box.appendChild(title);
+
+  const rows = CONTACT_FIELDS
+    .map(f => ({ f, v: typeof person[f.key] === 'string' ? (person[f.key] as string).trim() : '' }))
+    .filter(r => r.v);
+
+  if (rows.length === 0) {
+    const empty = document.createElement('p');
+    empty.className = 'muted';
+    empty.textContent = t('noContactInfo');
+    box.appendChild(empty);
+  } else {
+    const dl = document.createElement('dl');
+    dl.className = 'f3-contact-list';
+    for (const { f, v } of rows) {
+      const dt = document.createElement('dt');
+      dt.textContent = t(f.labelKey);
+      const dd = document.createElement('dd');
+      if (f.href) {
+        const a = document.createElement('a');
+        a.href = f.href(v);
+        a.textContent = v;
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        dd.appendChild(a);
+      } else {
+        dd.textContent = v;
+      }
+      dl.appendChild(dt);
+      dl.appendChild(dd);
+    }
+    box.appendChild(dl);
+  }
+
+  overlay.appendChild(box);
+  const close = () => { overlay.remove(); document.removeEventListener('keydown', onKey); };
+  const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') close(); };
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+  document.addEventListener('keydown', onKey);
+  document.body.appendChild(overlay);
+}
+
+// Runs per card (via decorateCard). Attaches a click-to-expand handler to the
+// card's <img> exactly once.
 function makePhotoExpandable(this: HTMLElement): void {
   const img = this.querySelector('img') as HTMLImageElement | null;
   if (!img || img.dataset.expandWired) return;
@@ -319,6 +421,17 @@ function installPhotoUploadHook(root: HTMLElement): void {
       birthday.max = new Date().toISOString().slice(0, 10); // no future dates
     }
 
+    // Same native date picker for the death date.
+    const deathDate = form.querySelector<HTMLInputElement>('[name="death_date"]');
+    if (deathDate && deathDate.type !== 'date') {
+      deathDate.type = 'date';
+      deathDate.max = new Date().toISOString().slice(0, 10);
+    }
+
+    // Render the "deceased" field as a checkbox; group the contact inputs.
+    upgradeDeceasedCheckbox(form);
+    groupContactFields(form);
+
     if (form.querySelector('[data-photo-upload]')) return;
 
     const personId = readPersonIdFromForm(form);
@@ -382,4 +495,63 @@ function readPersonIdFromForm(form: HTMLElement): string | null {
   } catch {
     return null;
   }
+}
+
+// The library renders every field as a text input. Replace the "deceased" one
+// with a real checkbox for UX, while keeping the original (hidden) text input
+// as the value the library reads on submit — the same pattern the photo
+// uploader uses for the avatar field. The checkbox writes 'true'/'' into that
+// input (which mergePersonUpdate coerces to a boolean) and dispatches `input`
+// so the library notices the change.
+function upgradeDeceasedCheckbox(form: HTMLElement): void {
+  const input = form.querySelector<HTMLInputElement>('[name="deceased"]');
+  if (!input || input.dataset.checkboxWired) return;
+  input.dataset.checkboxWired = '1';
+  input.style.display = 'none';
+
+  // Initialise from the stored person (robust against the library not
+  // populating boolean fields); fall back to whatever value is in the input.
+  const personId = readPersonIdFromForm(form);
+  const person = personId ? state?.row.data.find(p => p.id === personId) ?? null : null;
+  const isDeceased = person ? !!person.data.deceased : input.value === 'true';
+  input.value = isDeceased ? 'true' : ''; // keep the hidden value in sync silently
+
+  const checkbox = document.createElement('input');
+  checkbox.type = 'checkbox';
+  checkbox.className = 'f3-deceased-checkbox';
+  checkbox.checked = isDeceased;
+  checkbox.addEventListener('change', () => {
+    input.value = checkbox.checked ? 'true' : '';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  input.parentElement?.insertBefore(checkbox, input);
+}
+
+// Move the contact inputs into one collapsible <details> fieldset so the form
+// isn't a wall of mostly-empty inputs. Open by default only when the person
+// already has a contact value. Idempotent (guarded by data-contact-group).
+function groupContactFields(form: HTMLElement): void {
+  if (form.querySelector('[data-contact-group]')) return;
+  const keys = ['email', 'phone', 'wechat', 'instagram', 'facebook', 'linkedin'];
+  const wrappers: HTMLElement[] = [];
+  for (const k of keys) {
+    const input = form.querySelector<HTMLInputElement>(`[name="${k}"]`);
+    const w = input?.closest('.f3-form-field') as HTMLElement | null;
+    if (w) wrappers.push(w);
+  }
+  if (wrappers.length === 0) return;
+
+  const details = document.createElement('details');
+  details.className = 'lang-fields';
+  details.setAttribute('data-contact-group', '');
+  const summary = document.createElement('summary');
+  summary.textContent = t('contactInfo');
+  details.appendChild(summary);
+  details.open = wrappers.some(w => {
+    const i = w.querySelector('input');
+    return i instanceof HTMLInputElement && i.value.trim() !== '';
+  });
+
+  wrappers[0].parentElement?.insertBefore(details, wrappers[0]);
+  for (const w of wrappers) details.appendChild(w);
 }
