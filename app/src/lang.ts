@@ -11,6 +11,7 @@ import type {
   PersonData,
   StoredPerson
 } from './types';
+import { t } from './i18n';
 
 const STORAGE_KEY = 'family-chart:lang';
 
@@ -47,6 +48,10 @@ function isFamilyNameFirst(code: LanguageCode | null): boolean {
   return !!code && /^(zh|ja|ko)/.test(code);
 }
 
+function isChinese(code: LanguageCode | null): boolean {
+  return !!code && /^zh/.test(code);
+}
+
 function hasName(e: NameEntry | undefined): boolean {
   return !!e && !!(e.first || e.last || e.full);
 }
@@ -72,15 +77,15 @@ function resolveNameWithCode(
   names: NamesMap,
   lang: LanguageCode
 ): { entry: NameEntry; code: LanguageCode | null } {
-  if (lang === 'zh') {
+  if (isChinese(lang)) {
     const cn = chineseEntry(names);
-    if (cn) return { entry: cn, code: 'zh' };
+    if (cn) return { entry: cn, code: lang };
   } else if (hasName(names[lang])) {
     return { entry: names[lang]!, code: lang };
   }
   if (hasName(names.en)) return { entry: names.en!, code: 'en' };
   const cn = chineseEntry(names);
-  if (cn) return { entry: cn, code: 'zh' };
+  if (cn) return { entry: cn, code: 'zh-Hant' };
   for (const code of Object.keys(names)) {
     if (hasName(names[code])) return { entry: names[code]!, code: code as LanguageCode };
   }
@@ -105,7 +110,7 @@ export function formatDisplayName(entry: NameEntry, code: LanguageCode | null): 
 export function cardPrimaryName(data: Record<string, unknown>, lang: LanguageCode = currentLanguage): string {
   const en = formatDisplayName({ first: readString(data.first_name), last: readString(data.last_name) }, 'en');
   const cn = readString(data.cn_name);
-  if (lang === 'zh' && cn) return cn;
+  if (isChinese(lang) && cn) return cn;
   return en || cn;
 }
 
@@ -217,11 +222,11 @@ export interface FormFieldConfig {
 
 export function buildFormFields(): FormFieldConfig[] {
   return [
-    { type: 'text', label: 'First name', name: 'first_name' },
-    { type: 'text', label: 'Last name', name: 'last_name' },
+    { type: 'text', label: t('firstName'), name: 'first_name' },
+    { type: 'text', label: t('lastName'), name: 'last_name' },
     // One optional Chinese name; accepts Traditional or Simplified, stored as-is.
-    { type: 'text', label: 'Chinese name (optional)', name: 'cn_name' },
-    { type: 'text', label: 'Birthday', name: 'birthday' },
-    { type: 'text', label: 'Profile photo', name: 'avatar' }
+    { type: 'text', label: t('chineseName'), name: 'cn_name' },
+    { type: 'text', label: t('birthday'), name: 'birthday' },
+    { type: 'text', label: t('profilePhoto'), name: 'avatar' }
   ];
 }

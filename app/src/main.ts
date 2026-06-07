@@ -6,7 +6,8 @@ import '@lib/styles/family-chart.css';
 import { getCurrentSession, onAuthStateChange, signOut } from './auth';
 import { fetchTreeMeta } from './db';
 import { downloadJSON, downloadPNG } from './export';
-import { initLanguage, setLanguage } from './lang';
+import { initLanguage, setLanguage, getLanguage } from './lang';
+import { t } from './i18n';
 import type { LanguageCode } from './config';
 import { initAdminBadge } from './admin';
 import { initTree, rerenderForLanguage } from './tree';
@@ -67,12 +68,27 @@ function showHeaderForAuthed(_session: Session): void {
 // Wire up header controls
 // ---------------------------------------------------------------------------
 
+// Translate the static header chrome (title + buttons) for the current language.
+function applyChrome(): void {
+  const set = (sel: string, text: string) => {
+    const el = document.querySelector(sel);
+    if (el && el.textContent !== text) el.textContent = text;
+  };
+  set('.app-title', t('appTitle'));
+  set('#admin-label', t('pending'));
+  set('#download-json-btn', t('downloadJson'));
+  set('#download-png-btn', t('downloadPng'));
+  set('#logout-btn', t('logout'));
+  document.documentElement.lang = getLanguage().startsWith('zh') ? 'zh' : 'en';
+}
+
 langToggle.addEventListener('change', async () => {
   const newLang = langToggle.value as LanguageCode;
   setLanguage(newLang);
-  if (currentSession?.role) {
-    await rerenderForLanguage();
-  }
+  applyChrome();
+  // Re-render whatever is on screen in the new language.
+  if (currentSession?.role) await rerenderForLanguage();
+  else await mount(currentSession);
 });
 
 logoutBtn.addEventListener('click', async () => {
@@ -101,6 +117,7 @@ async function boot(): Promise<void> {
   }
   const lang = initLanguage(treeDefault ?? null);
   langToggle.value = lang;
+  applyChrome();
 
   const session = await getCurrentSession();
   await mount(session);

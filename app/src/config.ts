@@ -10,7 +10,9 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !TREE_ID) {
   console.error('Missing required environment variables. Check .env.example.');
 }
 
-export type LanguageCode = 'en' | 'zh';
+// UI languages. Names are stored under `en` (first/last) and a single `zh`
+// (full) key; both Chinese UI languages display that one stored Chinese name.
+export type LanguageCode = 'en' | 'zh-Hans' | 'zh-Hant';
 
 export interface LanguageOption {
   code: LanguageCode;
@@ -19,7 +21,8 @@ export interface LanguageOption {
 
 export const LANGUAGES: LanguageOption[] = [
   { code: 'en', label: 'English' },
-  { code: 'zh', label: '中文' }
+  { code: 'zh-Hans', label: '简体中文' },
+  { code: 'zh-Hant', label: '繁體中文' }
 ];
 
 export const DEFAULT_LANGUAGE: LanguageCode = 'en';

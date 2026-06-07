@@ -9,6 +9,7 @@ import {
   getLanguage,
   toDisplayPeople
 } from './lang';
+import { t } from './i18n';
 import { mapExportedToStored, buildOriginalIndex } from './persist';
 import {
   pruneOrphanedAvatars,
@@ -174,7 +175,7 @@ async function persistCurrent(): Promise<void> {
     pruneOrphanedAvatars(beforePeople, updated.data).catch(() => undefined);
   } catch (err) {
     if (err instanceof StaleVersionError) {
-      showToast('Someone else updated the tree. Refreshing…', 'error');
+      showToast(t('someoneUpdated'), 'error');
       await refreshTree();
     } else {
       console.error('Save failed', err);
@@ -194,7 +195,7 @@ function makePhotoExpandable(this: HTMLElement): void {
   if (!img || img.dataset.expandWired) return;
   img.dataset.expandWired = '1';
   img.style.cursor = 'zoom-in';
-  img.title = 'Click to view full size';
+  img.title = t('clickFullSize');
   img.addEventListener('click', (e) => {
     e.stopPropagation(); // don't also open the edit form
     openImageLightbox(img.src);
@@ -219,26 +220,23 @@ function openImageLightbox(src: string): void {
 // clear what each does on hover.
 // ---------------------------------------------------------------------------
 
-const ACTION_TOOLTIPS: [string, string][] = [
-  ['.f3-add-relative-btn', 'Add relative'],
-  ['.f3-edit-btn', 'Edit details'],
-  ['.f3-remove-relative-btn', 'Remove this relationship'],
-  ['.f3-delete-btn', 'Delete person'],
-  ['.f3-close-btn', 'Close'],
-  ['.card_add_relative', 'Add relative'],
-  ['.card_edit', 'Edit details']
-];
-
 function setActionTooltips(root: HTMLElement): void {
-  for (const [sel, label] of ACTION_TOOLTIPS) {
+  const tooltips: [string, string][] = [
+    ['.f3-add-relative-btn', t('addRelative')],
+    ['.f3-remove-relative-btn', t('removeRelationship')],
+    ['.f3-delete-btn', t('deletePerson')],
+    ['.f3-close-btn', t('close')],
+    ['.card_add_relative', t('addRelative')]
+  ];
+  for (const [sel, label] of tooltips) {
     root.querySelectorAll(sel).forEach(el => {
       if (el.getAttribute('title') === label) return;
       el.setAttribute('title', label);
       // SVG elements surface tooltips via a <title> child, not the attribute.
       if (el instanceof SVGElement && !el.querySelector('title')) {
-        const t = document.createElementNS('http://www.w3.org/2000/svg', 'title');
-        t.textContent = label;
-        el.insertBefore(t, el.firstChild);
+        const titleEl = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+        titleEl.textContent = label;
+        el.insertBefore(titleEl, el.firstChild);
       }
     });
   }
@@ -269,8 +267,30 @@ function labelAddRelative(root: HTMLElement): void {
     label.className = 'f3-add-relative-label';
     btn.appendChild(label);
   }
-  const want = active ? 'Cancel' : 'Add relative';
+  const want = active ? t('cancel') : t('addRelative');
   if (label.textContent !== want) label.textContent = want;
+}
+
+// Translate the library-rendered form controls (Submit/Cancel/Delete/Remove
+// Relation + Male/Female) into the current UI language. Idempotent.
+function translateFormControls(root: HTMLElement): void {
+  const form = root.querySelector('#familyForm');
+  if (!form) return;
+  const setText = (el: Element | null, text: string) => {
+    if (el && (el.textContent || '').trim() !== text) el.textContent = text;
+  };
+  setText(form.querySelector('button[type="submit"]'), t('submit'));
+  setText(form.querySelector('.f3-cancel-btn'), t('cancel'));
+  setText(form.querySelector('.f3-delete-btn'), t('del'));
+  const rmv = form.querySelector('.f3-remove-relative-btn');
+  if (rmv && !rmv.classList.contains('active')) setText(rmv, t('removeRelation'));
+  form.querySelectorAll('.f3-radio-group label').forEach(lbl => {
+    const val = lbl.querySelector('input')?.getAttribute('value');
+    const want = val === 'M' ? t('male') : val === 'F' ? t('female') : '';
+    if (!want) return;
+    const node = Array.from(lbl.childNodes).reverse().find(n => n.nodeType === Node.TEXT_NODE && (n.textContent || '').trim());
+    if (node && (node.textContent || '').trim() !== want) node.textContent = want;
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -289,6 +309,9 @@ function installPhotoUploadHook(root: HTMLElement): void {
     const form = root.querySelector('form');
     if (!form) return;
 
+    // Translate the library's form buttons + gender labels into the UI language.
+    translateFormControls(root);
+
     // Upgrade the plain birthday text input to a native date picker (calendar).
     const birthday = form.querySelector<HTMLInputElement>('[name="birthday"]');
     if (birthday && birthday.type !== 'date') {
@@ -305,7 +328,7 @@ function installPhotoUploadHook(root: HTMLElement): void {
     wrapper.setAttribute('data-photo-upload', '');
     wrapper.style.margin = '10px 0';
     wrapper.innerHTML = `
-      <label class="muted" style="display:block;margin-bottom:6px;">Profile photo</label>
+      <label class="muted" style="display:block;margin-bottom:6px;">${t('profilePhoto')}</label>
       <input type="file" accept="image/*" />
     `;
     const input = wrapper.querySelector('input') as HTMLInputElement;
@@ -320,7 +343,7 @@ function installPhotoUploadHook(root: HTMLElement): void {
           avatarInput.value = path;
           avatarInput.dispatchEvent(new Event('input', { bubbles: true }));
         }
-        showToast('Photo uploaded. Save the form to apply.');
+        showToast(t('photoUploaded'));
       } catch (err) {
         console.error(err);
         showToast(`Upload failed: ${(err as Error).message}`, 'error');

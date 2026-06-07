@@ -28,7 +28,7 @@ describe('toDisplayPerson (read adapter)', () => {
   });
 
   it('card display_name shows the Chinese name as written under a Chinese view', () => {
-    expect(toDisplayPerson(person({ en: { first: 'Ming', last: 'Yao' }, zh: { full: '姚明' } }), 'zh').data.display_name).toBe('姚明');
+    expect(toDisplayPerson(person({ en: { first: 'Ming', last: 'Yao' }, zh: { full: '姚明' } }), 'zh-Hant').data.display_name).toBe('姚明');
   });
 
   it('emits no per-script suffixed fields and no script selector', () => {
@@ -40,11 +40,11 @@ describe('toDisplayPerson (read adapter)', () => {
 
 describe('formatDisplayName', () => {
   it('uses a single-unit name as-is', () => {
-    expect(formatDisplayName({ full: '姚明' }, 'zh')).toBe('姚明');
+    expect(formatDisplayName({ full: '姚明' }, 'zh-Hant')).toBe('姚明');
   });
   it('orders given/family by script', () => {
     expect(formatDisplayName({ first: 'Ada', last: 'Lovelace' }, 'en')).toBe('Ada Lovelace');
-    expect(formatDisplayName({ first: '明', last: '姚' }, 'zh')).toBe('姚明');
+    expect(formatDisplayName({ first: '明', last: '姚' }, 'zh-Hant')).toBe('姚明');
   });
 });
 
