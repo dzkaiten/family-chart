@@ -1,4 +1,4 @@
-# Family Tree App — Roadmap
+# Family Chart App — Roadmap
 
 > Working checklist of implementation items. Check items off (`- [x]`) as they land.
 > Architecture reference: [`docs/spec.md`](spec.md).

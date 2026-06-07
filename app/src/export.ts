@@ -43,7 +43,7 @@ export async function downloadJSON(): Promise<void> {
       people: sanitized
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-    triggerDownload(blob, `family-tree-${todayStamp()}.json`);
+    triggerDownload(blob, `family-chart-${todayStamp()}.json`);
   } catch (err) {
     showToast(`Download failed: ${(err as Error).message}`, 'error');
   }
@@ -67,7 +67,7 @@ export async function downloadPNG(): Promise<void> {
     });
     const res = await fetch(dataUrl);
     const blob = await res.blob();
-    triggerDownload(blob, `family-tree-${todayStamp()}.png`);
+    triggerDownload(blob, `family-chart-${todayStamp()}.png`);
   } catch (err) {
     console.error(err);
     showToast(`Image export failed: ${(err as Error).message}`, 'error');
