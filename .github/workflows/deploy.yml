@@ -21,29 +21,32 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 20
-          cache: yarn
 
       - name: Install dependencies
-        run: yarn install
+        # npm (not yarn): yarn-classic hits a vite/vitest nested-link bug on this
+        # dependency set. package-lock.json is gitignored, so `npm install` (no
+        # lockfile) rather than `npm ci`.
+        run: npm install
 
       - name: Typecheck and unit test
         run: |
-          yarn typecheck
-          yarn test:unit
+          npm run typecheck
+          npm run test:unit
 
       - name: Build app
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
           VITE_TREE_ID: ${{ secrets.VITE_TREE_ID }}
+          VITE_FAMILY_EMAIL: ${{ secrets.VITE_FAMILY_EMAIL }}
           VITE_BASE_PATH: /${{ github.event.repository.name }}/
-        run: yarn app:build
+        run: npm run app:build
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
