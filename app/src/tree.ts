@@ -8,9 +8,11 @@ import {
   cardSecondaryName,
   getLanguage,
   lifeDates,
-  toDisplayPeople
+  toDisplayPeople,
+  toDisplayPerson
 } from './lang';
 import { t, type I18nKey } from './i18n';
+import { kinshipTerm } from './kinship';
 import { mapExportedToStored, buildOriginalIndex } from './persist';
 import {
   pruneOrphanedAvatars,
@@ -31,6 +33,74 @@ interface TreeState {
 
 let state: TreeState | null = null;
 let saveInFlight: Promise<void> | null = null;
+
+// Kinship "source": the person every card's term is computed relative to.
+// Per-viewer (localStorage), not part of the shared tree data.
+const KINSHIP_KEY = 'family-chart:kinship-source';
+let kinshipSourceId: string | null =
+  typeof localStorage !== 'undefined' ? localStorage.getItem(KINSHIP_KEY) : null;
+
+function getKinshipSource(): string | null {
+  return kinshipSourceId;
+}
+function setKinshipSource(id: string | null): void {
+  kinshipSourceId = id;
+  if (typeof localStorage === 'undefined') return;
+  if (id) localStorage.setItem(KINSHIP_KEY, id);
+  else localStorage.removeItem(KINSHIP_KEY);
+}
+function toggleKinshipSource(id: string): void {
+  setKinshipSource(getKinshipSource() === id ? null : id);
+  // Re-render card text + buttons without rebuilding the whole chart (keeps pan/zoom).
+  state?.chart?.updateTree({});
+  updateKinshipChip();
+}
+
+// The card's kinship line: the target's Chinese term relative to the source.
+// Empty when no source is set or for the source's own card.
+function kinshipCardLine(personId: string): string {
+  const src = getKinshipSource();
+  if (!src || !state || personId === src) return '';
+  const r = kinshipTerm(src, personId, state.row.data);
+  if (!r.term) return '';
+  return r.ambiguous ? `${r.term}?` : r.term;
+}
+
+// Header chip showing the current kinship source with a clear (✕) control.
+function updateKinshipChip(): void {
+  const actions = document.querySelector('.app-header-actions');
+  if (!actions) return;
+  let chip = document.getElementById('kinship-chip');
+  const src = getKinshipSource();
+  const person = src && state ? state.row.data.find(p => p.id === src) : null;
+
+  // No source, or source no longer in the tree → clear chip (and stale source).
+  if (!src || !person) {
+    if (src && !person) setKinshipSource(null);
+    chip?.remove();
+    return;
+  }
+
+  const name = cardPrimaryName(toDisplayPerson(person).data) || src;
+  if (!chip) {
+    chip = document.createElement('div');
+    chip.id = 'kinship-chip';
+    chip.className = 'kinship-chip';
+    actions.insertBefore(chip, actions.firstChild);
+  }
+  chip.textContent = `${t('kinshipBasis')}: ${name} `;
+  const clear = document.createElement('button');
+  clear.type = 'button';
+  clear.className = 'kinship-chip-clear';
+  clear.textContent = '✕';
+  clear.title = t('kinshipClear');
+  clear.addEventListener('click', () => {
+    setKinshipSource(null);
+    state?.chart?.updateTree({});
+    updateKinshipChip();
+  });
+  chip.appendChild(clear);
+}
 
 function buildAvatarMap(people: StoredPerson[]): Map<string, string> {
   const m = new Map<string, string>();
@@ -102,7 +172,9 @@ async function render(): Promise<void> {
       (d: any) => cardPrimaryName(d.data),
       (d: any) => cardSecondaryName(d.data),
       // Line 3: life dates ("1940–2012" for deceased, birth year for living).
-      (d: any) => lifeDates(d.data)
+      (d: any) => lifeDates(d.data),
+      // Line 4: Chinese kinship term relative to the chosen source (empty when none).
+      (d: any) => kinshipCardLine(d.id)
     ])
     .setMiniTree(true)
     // Bigger cards + a larger photo so the picture is easy to see.
@@ -130,6 +202,7 @@ async function render(): Promise<void> {
 
   state.chart = f3Chart;
   f3Chart.updateTree({ initial: true });
+  updateKinshipChip();
 
   // The library's setEditFirst() does NOT auto-open a form (it only makes an
   // opened form editable). For a brand-new, empty tree, open the starter
@@ -235,6 +308,28 @@ function decorateCard(this: HTMLElement, d: any): void {
       openContactPopup(person);
     });
     cardEl.appendChild(btn);
+  }
+
+  // Kinship "set as source" toggle. Highlights the current source; clicking any
+  // other card makes it the source and recomputes every card's term.
+  const personId = d?.data?.id as string | undefined;
+  if (personId) {
+    const isSource = getKinshipSource() === personId;
+    cardEl.classList.toggle('card-kinship-source', isSource);
+    let kb = cardEl.querySelector('.f3-kinship-btn') as HTMLButtonElement | null;
+    if (!kb) {
+      kb = document.createElement('button');
+      kb.type = 'button';
+      kb.className = 'f3-kinship-btn';
+      kb.textContent = '称';
+      kb.addEventListener('click', (e) => {
+        e.stopPropagation(); // don't also open the edit form
+        toggleKinshipSource(personId);
+      });
+      cardEl.appendChild(kb);
+    }
+    kb.classList.toggle('active', isSource);
+    kb.title = isSource ? t('kinshipClear') : t('kinshipSetSource');
   }
 }
 

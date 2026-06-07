@@ -58,6 +58,11 @@ const T = {
   facebook:        { en: 'Facebook',        'zh-Hans': 'Facebook',       'zh-Hant': 'Facebook' },
   linkedin:        { en: 'LinkedIn',        'zh-Hans': 'LinkedIn',       'zh-Hant': 'LinkedIn' },
 
+  // Kinship calculator
+  kinshipSetSource: { en: 'Set as kinship source', 'zh-Hans': '设为称呼基准', 'zh-Hant': '設為稱呼基準' },
+  kinshipBasis:     { en: 'Kinship from',          'zh-Hans': '称呼基准',     'zh-Hant': '稱呼基準' },
+  kinshipClear:     { en: 'Clear kinship source',  'zh-Hans': '清除称呼基准', 'zh-Hant': '清除稱呼基準' },
+
   // Toasts
   enterEmail:      { en: 'Enter an email address', 'zh-Hans': '请输入邮箱地址', 'zh-Hant': '請輸入電郵地址' },
   enterNameEmail:  { en: 'Please enter both name and email', 'zh-Hans': '请输入姓名和邮箱', 'zh-Hant': '請輸入姓名和電郵' },

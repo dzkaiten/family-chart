@@ -390,3 +390,58 @@ html, body {
 .f3-contact-list dt { color: var(--color-muted, #666); font-size: 13px; }
 .f3-contact-list dd { margin: 0; font-size: 14px; word-break: break-all; }
 .f3-contact-list a { color: var(--link, #2563eb); }
+
+/* Kinship "set as source" button (称) — top-left of a card, mirroring the
+   contact ⓘ button top-right. */
+.f3-kinship-btn {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  font-size: 12px;
+  line-height: 22px;
+  text-align: center;
+  cursor: pointer;
+  z-index: 2;
+}
+.f3-kinship-btn:hover { background: rgba(0, 0, 0, 0.7); }
+.f3-kinship-btn.active { background: #2563eb; }
+
+/* The card chosen as the kinship source gets an accent ring. */
+.f3 .card-kinship-source .card-inner {
+  outline: 2px solid #2563eb;
+  outline-offset: 1px;
+}
+
+/* Header chip naming the current kinship source, with a clear (✕) control. */
+.kinship-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: #2563eb;
+  color: #fff;
+  border-radius: 14px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+.kinship-chip-clear {
+  appearance: none;
+  border: none;
+  background: rgba(255, 255, 255, 0.25);
+  color: #fff;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  font-size: 11px;
+  line-height: 16px;
+  cursor: pointer;
+  padding: 0;
+}
+.kinship-chip-clear:hover { background: rgba(255, 255, 255, 0.45); }
