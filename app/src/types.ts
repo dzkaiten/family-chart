@@ -28,6 +28,7 @@ export interface PersonData {
   // Deceased / life dates (added 2026-06-07)
   deceased?: boolean;
   death_date?: string; // ISO YYYY-MM-DD
+  notes?: string; // free-form notes
   [key: string]: unknown;
 }
 

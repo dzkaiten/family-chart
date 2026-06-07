@@ -7,14 +7,14 @@ type Dict = Record<LanguageCode, string>;
 
 const T = {
   // Header
-  appTitle:        { en: 'Family Tree',   'zh-Hans': '家族树',   'zh-Hant': '家族樹' },
+  appTitle:        { en: 'Family Chart',  'zh-Hans': '家族图',   'zh-Hant': '家族圖' },
   downloadJson:    { en: 'Download JSON', 'zh-Hans': '下载 JSON', 'zh-Hant': '下載 JSON' },
   downloadPng:     { en: 'Download PNG',  'zh-Hans': '下载 PNG',  'zh-Hant': '下載 PNG' },
   logout:          { en: 'Log out',       'zh-Hans': '登出',     'zh-Hant': '登出' },
 
   // Login screen
   signIn:          { en: 'Sign in',       'zh-Hans': '登录',     'zh-Hant': '登入' },
-  signInDesc:      { en: 'Enter the family password to view and edit the family tree.', 'zh-Hans': '输入家族密码以查看和编辑家族树。', 'zh-Hant': '輸入家族密碼以檢視和編輯家族樹。' },
+  signInDesc:      { en: 'Enter the family password to view and edit the family chart.', 'zh-Hans': '输入家族密码以查看和编辑家族图。', 'zh-Hant': '輸入家族密碼以檢視和編輯家族圖。' },
   email:           { en: 'Email',         'zh-Hans': '邮箱',     'zh-Hant': '電郵' },
   password:        { en: 'Password',      'zh-Hans': '密码',     'zh-Hant': '密碼' },
   enterEmailPassword: { en: 'Enter email and password', 'zh-Hans': '请输入邮箱和密码', 'zh-Hant': '請輸入電郵和密碼' },
@@ -29,6 +29,8 @@ const T = {
   profilePhoto:    { en: 'Profile photo', 'zh-Hans': '照片',     'zh-Hant': '照片' },
   choosePhoto:     { en: 'Choose photo',  'zh-Hans': '选择照片', 'zh-Hant': '選擇照片' },
   noPhotoChosen:   { en: 'No photo chosen', 'zh-Hans': '未选择照片', 'zh-Hant': '未選擇照片' },
+  edit:            { en: 'Edit',          'zh-Hans': '编辑',     'zh-Hant': '編輯' },
+  stopEditing:     { en: 'Stop editing',  'zh-Hans': '停止编辑', 'zh-Hant': '停止編輯' },
   addRelative:     { en: 'Add relative',  'zh-Hans': '添加亲属', 'zh-Hant': '新增親屬' },
   cancel:          { en: 'Cancel',        'zh-Hans': '取消',     'zh-Hant': '取消' },
   submit:          { en: 'Submit',        'zh-Hans': '提交',     'zh-Hant': '提交' },
@@ -46,8 +48,11 @@ const T = {
   clickFullSize:   { en: 'Click to view full size', 'zh-Hans': '点击查看原图', 'zh-Hant': '點擊查看原圖' },
   photoUploaded:   { en: 'Photo uploaded. Save to apply.', 'zh-Hans': '照片已上传，保存后生效。', 'zh-Hant': '照片已上傳，儲存後生效。' },
 
-  // Profile fields — contact + deceased/dates (added 2026-06-07)
-  deceased:        { en: 'Passed away',     'zh-Hans': '已故',           'zh-Hant': '已故' },
+  // Profile fields — contact + status/dates (added 2026-06-07)
+  status:          { en: 'Status',          'zh-Hans': '状态',           'zh-Hant': '狀態' },
+  living:          { en: 'Living',          'zh-Hans': '在世',           'zh-Hant': '在世' },
+  deceasedStatus:  { en: 'Deceased',        'zh-Hans': '已故',           'zh-Hant': '已故' },
+  notes:           { en: 'Notes',           'zh-Hans': '备注',           'zh-Hant': '備註' },
   deathDate:       { en: 'Date of passing', 'zh-Hans': '过世日期',       'zh-Hant': '過世日期' },
   contactInfo:     { en: 'Contact info',    'zh-Hans': '联系方式',       'zh-Hant': '聯絡方式' },
   noContactInfo:   { en: 'No contact info', 'zh-Hans': '暂无联系方式',   'zh-Hant': '暫無聯絡方式' },
@@ -66,7 +71,7 @@ const T = {
   // Toasts
   enterEmail:      { en: 'Enter an email address', 'zh-Hans': '请输入邮箱地址', 'zh-Hant': '請輸入電郵地址' },
   enterNameEmail:  { en: 'Please enter both name and email', 'zh-Hans': '请输入姓名和邮箱', 'zh-Hant': '請輸入姓名和電郵' },
-  someoneUpdated:  { en: 'Someone else updated the tree. Refreshing…', 'zh-Hans': '有人更新了家族树，正在刷新…', 'zh-Hant': '有人更新了家族樹，正在重新整理…' },
+  someoneUpdated:  { en: 'Someone else updated the chart. Refreshing…', 'zh-Hans': '有人更新了家族图，正在刷新…', 'zh-Hant': '有人更新了家族圖，正在重新整理…' },
   saveFailed:      { en: 'Save failed: {x}', 'zh-Hans': '保存失败：{x}', 'zh-Hant': '儲存失敗：{x}' },
   uploadFailed:    { en: 'Upload failed: {x}', 'zh-Hans': '上传失败：{x}', 'zh-Hant': '上傳失敗：{x}' }
 } satisfies Record<string, Dict>;

@@ -1,4 +1,4 @@
-# Family Tree App — System Architecture
+# Family Chart App — System Architecture
 
 > **Living document.** This is the cross-session source of truth for *how the app
 > works today*. Update it when architecture changes. For what is built vs. planned
@@ -10,8 +10,8 @@
 
 ## 1. What this is
 
-A private, free-to-host family tree web app. Family members open one URL, sign in
-with a single shared password, and collaboratively view and edit a shared tree.
+A private, free-to-host family chart web app. Family members open one URL, sign in
+with a single shared password, and collaboratively view and edit a shared chart.
 Edits persist to Supabase and are visible to everyone. Names are multilingual
 (English + Chinese), people can have profile photos, and the whole tree is private
 (nothing is visible without signing in).

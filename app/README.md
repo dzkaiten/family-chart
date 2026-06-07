@@ -1,6 +1,6 @@
-# Family Tree App
+# Family Chart App
 
-A private, free-to-host family tree web app built on the [`family-chart`](../README.md) library. Auth via Supabase magic link, data and photos in Supabase, deployed to GitHub Pages via GitHub Actions.
+A private, free-to-host family chart web app built on the [`family-chart`](../README.md) library. Auth via Supabase magic link, data and photos in Supabase, deployed to GitHub Pages via GitHub Actions.
 
 ## Features
 

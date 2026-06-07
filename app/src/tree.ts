@@ -190,7 +190,7 @@ async function render(): Promise<void> {
     const f3EditTree = f3Chart.editTree();
     f3EditTree
       .setFields(fields)
-      .setEditFirst(true)
+      .setEditFirst(false)
       .setCardClickOpen(f3Card)
       .setOnChange(() => { scheduleSave(); });
     state.editTree = f3EditTree;
@@ -440,14 +440,6 @@ function setActionTooltips(root: HTMLElement): void {
   }
 }
 
-// The edit (pencil) control only toggles the form between editable inputs and a
-// read-only view. The app always opens cards editable (setEditFirst), so this
-// toggle is redundant and confusing (it does the opposite of "edit") — hide it.
-function hideEditToggle(root: HTMLElement): void {
-  const editBtn = root.querySelector<HTMLElement>('.f3-edit-btn');
-  if (editBtn && editBtn.style.display !== 'none') editBtn.style.display = 'none';
-}
-
 // Turn the icon-only "add relative" control into a clearly labelled button so
 // non-technical users understand it. Re-applied on each form render.
 function labelAddRelative(root: HTMLElement): void {
@@ -466,6 +458,27 @@ function labelAddRelative(root: HTMLElement): void {
     btn.appendChild(label);
   }
   const want = active ? t('cancel') : t('addRelative');
+  if (label.textContent !== want) label.textContent = want;
+}
+
+// Turn the icon-only pencil toggle into a clearly labelled "Edit" button.
+// Forms open read-only by default (setEditFirst false); this button switches
+// the open form to editable. Styled to match the "Add Relative" button.
+function labelEditToggle(root: HTMLElement): void {
+  const btn = root.querySelector<HTMLElement>('.f3-edit-btn');
+  if (!btn) return;
+  if (btn.style.display === 'none') btn.style.display = '';
+  if (!btn.classList.contains('f3-edit-as-button')) {
+    btn.classList.add('f3-edit-as-button');
+  }
+  let label = btn.querySelector<HTMLElement>('.f3-edit-label');
+  if (!label) {
+    label = document.createElement('span');
+    label.className = 'f3-edit-label';
+    btn.appendChild(label);
+  }
+  const editing = !!btn.querySelector('[data-icon="pencil-off"]'); // edit mode on
+  const want = editing ? t('stopEditing') : t('edit');
   if (label.textContent !== want) label.textContent = want;
 }
 
@@ -499,8 +512,8 @@ function installPhotoUploadHook(root: HTMLElement): void {
   const observer = new MutationObserver(() => {
     // Label the icon-only add/edit/remove controls (cards + form) on hover.
     setActionTooltips(root);
-    // The edit toggle is redundant (cards already open editable) — hide it.
-    hideEditToggle(root);
+    // Transform the pencil toggle into a labeled "Edit" button.
+    labelEditToggle(root);
     // Make "add relative" a clearly labelled button for non-technical users.
     labelAddRelative(root);
 
@@ -525,7 +538,7 @@ function installPhotoUploadHook(root: HTMLElement): void {
     }
 
     // Render the "deceased" field as a checkbox; group the contact inputs.
-    upgradeDeceasedCheckbox(form);
+    upgradeStatusField(form);
     groupContactFields(form);
     // Prefix the social fields so you only type the username.
     upgradeSocialPrefixes(form);
@@ -597,20 +610,16 @@ function readPersonIdFromForm(form: HTMLElement): string | null {
   }
 }
 
-// The library renders every field as a text input. Replace the "deceased" one
-// with a checkbox placed inline in the birthday field, keeping the original
-// (hidden) text input as the value the library reads on submit (same pattern
-// the photo uploader uses). The checkbox writes 'true'/'' into that input
-// (mergePersonUpdate coerces to boolean) and dispatches `input`. The death-date
-// field is only shown while deceased is checked.
-function upgradeDeceasedCheckbox(form: HTMLElement): void {
+// The library renders the "deceased" field as a text input. Replace it with a
+// Living/Deceased <select> (a clear status, not a yes/no question), keeping the
+// original (hidden) input as the value the library reads on submit. The select
+// writes 'true'/'' into that input (mergePersonUpdate coerces to boolean) and
+// dispatches `input`. The "Date of passing" field shows only when Deceased.
+function upgradeStatusField(form: HTMLElement): void {
   const input = form.querySelector<HTMLInputElement>('[name="deceased"]');
-  if (!input || input.dataset.checkboxWired) return;
-  input.dataset.checkboxWired = '1';
+  if (!input || input.dataset.statusWired) return;
+  input.dataset.statusWired = '1';
 
-  const deceasedField = input.closest('.f3-form-field') as HTMLElement | null;
-  const birthdayField = form.querySelector('[name="birthday"]')
-    ?.closest('.f3-form-field') as HTMLElement | null;
   const deathField = form.querySelector('[name="death_date"]')
     ?.closest('.f3-form-field') as HTMLElement | null;
 
@@ -621,29 +630,32 @@ function upgradeDeceasedCheckbox(form: HTMLElement): void {
   const isDeceased = person ? !!person.data.deceased : input.value === 'true';
   input.value = isDeceased ? 'true' : ''; // keep the hidden value in sync silently
 
-  // Hide the original standalone "Deceased" field; the hidden input it contains
-  // stays in the DOM so the library still reads/persists the value.
+  // Hide the raw text input; keep it in the DOM (the library reads/persists it).
   input.style.display = 'none';
-  if (deceasedField) deceasedField.style.display = 'none';
 
   const setDeathVisible = (v: boolean) => {
     if (deathField) deathField.style.display = v ? '' : 'none';
   };
   setDeathVisible(isDeceased); // death date only when deceased
 
-  // Inline checkbox + label, placed within the birthday field.
-  const label = document.createElement('label');
-  label.className = 'f3-deceased-inline';
-  const checkbox = document.createElement('input');
-  checkbox.type = 'checkbox';
-  checkbox.className = 'f3-deceased-checkbox';
-  checkbox.checked = isDeceased;
-  checkbox.addEventListener('change', () => {
-    input.value = checkbox.checked ? 'true' : '';
+  const select = document.createElement('select');
+  select.className = 'f3-status-select';
+  const living = document.createElement('option');
+  living.value = '';
+  living.textContent = t('living');
+  const dead = document.createElement('option');
+  dead.value = 'deceased';
+  dead.textContent = t('deceasedStatus');
+  select.append(living, dead);
+  select.value = isDeceased ? 'deceased' : '';
+
+  select.addEventListener('change', () => {
+    const dec = select.value === 'deceased';
+    input.value = dec ? 'true' : '';
     input.dispatchEvent(new Event('input', { bubbles: true }));
-    setDeathVisible(checkbox.checked);
-    if (!checkbox.checked) {
-      // No longer deceased → clear any death date too.
+    setDeathVisible(dec);
+    if (!dec) {
+      // No longer deceased → clear any date of passing too.
       const dd = form.querySelector<HTMLInputElement>('[name="death_date"]');
       if (dd && dd.value) {
         dd.value = '';
@@ -651,9 +663,9 @@ function upgradeDeceasedCheckbox(form: HTMLElement): void {
       }
     }
   });
-  label.appendChild(checkbox);
-  label.appendChild(document.createTextNode(t('deceased')));
-  (birthdayField ?? deceasedField ?? form).appendChild(label);
+
+  // Place the select where the hidden input is (within its "Status" field).
+  input.parentElement?.appendChild(select);
 }
 
 // Move the contact inputs into one collapsible <details> fieldset so the form

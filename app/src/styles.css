@@ -267,6 +267,49 @@ html, body {
   border-radius: 4px;
 }
 
+/* "Edit" rendered as a labeled button matching "Add relative". */
+.f3-edit-btn.f3-edit-as-button {
+  display: flex;
+  box-sizing: border-box;
+  width: 100%;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin: 34px 0 4px;
+  padding: 10px 14px;
+  background: #6b7280;
+  color: #fff;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1;
+}
+.f3-edit-btn.f3-edit-as-button:hover { background: #4b5563; }
+.f3-edit-btn.f3-edit-as-button:has([data-icon="pencil-off"]) { background: #9ca3af; }
+.f3-edit-btn.f3-edit-as-button:has([data-icon="pencil-off"]):hover { background: #6b7280; }
+.f3-edit-btn.f3-edit-as-button svg { width: 18px; height: 18px; }
+.f3-edit-label { white-space: nowrap; }
+
+/* Read-only form values — modern, airy type treatment. */
+.f3-info-field { margin: 6px 0; }
+.f3-info-field-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.55;
+  margin-bottom: 2px;
+}
+.f3-info-field-value {
+  display: block;
+  font-size: 15px;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  line-height: 1.4;
+}
+
 /* "Add relative" rendered as a clear, full-width button (for non-technical users). */
 .f3-add-relative-btn.f3-add-relative-as-button {
   display: flex;
@@ -410,16 +453,6 @@ html, body {
   border-bottom: 1px solid rgba(255, 255, 255, 0.12);
 }
 
-/* Deceased: a compact checkbox placed inline within the birthday field. */
-.f3-deceased-inline {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin: 6px 0 0;
-  font-size: 13px;
-  cursor: pointer;
-}
-.f3-deceased-checkbox { width: 16px; height: 16px; margin: 0; cursor: pointer; }
 
 /* Social fields: a fixed prefix (instagram.com/ …) before the username input. */
 .f3-social-row { display: flex; align-items: center; gap: 4px; }
@@ -520,6 +553,7 @@ html, body {
 }
 .f3 .f3-form input::placeholder,
 .f3 .f3-form textarea::placeholder { color: rgba(255, 255, 255, 0.32); }
+.f3 .f3-form textarea { min-height: 72px; resize: vertical; font-family: inherit; }
 
 .f3 .f3-form input:not([type="radio"]):not([type="checkbox"]):focus,
 .f3 .f3-form textarea:focus,
@@ -540,7 +574,7 @@ html, body {
 /* Micro-labels: small, quiet, uppercase tracking. Child-combinator +
    :not() so the inline "Deceased" label and the radio options keep their
    own (sentence-case) styling. */
-.f3 .f3-form .f3-form-field > label:not(.f3-deceased-inline),
+.f3 .f3-form .f3-form-field > label,
 .f3 .f3-form .f3-info-field-label {
   display: block;
   margin-bottom: 3px;
@@ -571,7 +605,7 @@ html, body {
 .f3 .f3-form .f3-radio-group label {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   margin: 0;
   font-size: 14px;
   font-weight: 500;
@@ -579,8 +613,9 @@ html, body {
   text-transform: none;
   opacity: 0.9;
 }
-.f3 .f3-form input[type="radio"],
-.f3-deceased-checkbox { accent-color: var(--form-accent, #5bbf73); }
+/* Zero the library's margin-right:5px so the gap is the only spacing. */
+.f3 .f3-form .f3-radio-group input[type="radio"] { margin: 0; }
+.f3 .f3-form input[type="radio"] { accent-color: var(--form-accent, #5bbf73); }
 
 /* Subtle separators / title */
 .f3 .f3-form hr { border: none; border-top: 1px solid rgba(255, 255, 255, 0.1); margin: 14px 0; }

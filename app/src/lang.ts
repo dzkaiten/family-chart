@@ -212,7 +212,7 @@ export function mergePersonUpdate(
       continue;
     }
 
-    if (CONTACT_KEYS.has(key)) {
+    if (CONTACT_KEYS.has(key) || key === 'notes') {
       const s = readString(value);
       if (s) rest[key] = s;
       // else: omit — don't persist empty strings
@@ -232,6 +232,7 @@ export function mergePersonUpdate(
   // The spread of existing?.data above would otherwise preserve the old value.
   if ('deceased' in formData && !rest.deceased) delete merged.deceased;
   if ('death_date' in formData && !rest.death_date) delete merged.death_date;
+  if ('notes' in formData && !rest.notes) delete merged.notes;
   for (const key of CONTACT_KEYS) {
     if (key in formData && !rest[key]) delete (merged as Record<string, unknown>)[key];
   }
@@ -299,9 +300,12 @@ export function buildFormFields(): FormFieldConfig[] {
     // One optional Chinese name; accepts Traditional or Simplified, stored as-is.
     { type: 'text',     label: t('chineseName'), name: 'cn_name' },
     { type: 'text',     label: t('birthday'),   name: 'birthday' },
-    // Deceased flag + death date (upgraded to date picker by tree.ts MutationObserver)
-    { type: 'text',     label: t('deceased'),   name: 'deceased' },
+    // Status (Living/Deceased) + date of passing. tree.ts turns the `deceased`
+    // field into a Living/Deceased <select> and shows death date only when deceased.
+    { type: 'text',     label: t('status'),     name: 'deceased' },
     { type: 'text',     label: t('deathDate'),  name: 'death_date' },
+    // Free-form notes
+    { type: 'textarea', label: t('notes'),      name: 'notes' },
     // Contact info block
     { type: 'text',     label: t('email'),       name: 'email' },
     { type: 'text',     label: t('phone'),       name: 'phone' },
