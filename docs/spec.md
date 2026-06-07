@@ -190,11 +190,18 @@ people. Schema highlights:
     },
     "gender": "M",
     "birthday": "1980-01-01",
-    "avatar": "{tree_id}/{person_id}/file.jpg"
+    "avatar": "{tree_id}/{person_id}/file.jpg",
+    "deceased": true,
+    "death_date": "2012-03-04",
+    "email": "", "phone": "", "wechat": "",
+    "instagram": "", "facebook": "", "linkedin": ""
   },
   "rels": { "parents": [], "spouses": [], "children": [] }
 }
 ```
+
+The contact fields and `deceased`/`death_date` are all optional, flat in `data`,
+and added without a migration (see §13). Empty values are not persisted.
 
 `names` is a language-keyed map. **English** is structured `{first, last}`.
 **Chinese** is a single-unit `{full}` under the `zh` key (script-agnostic — we accept
@@ -330,6 +337,43 @@ in the repo. Design:
 ## 12. Reference docs
 
 - Roadmap / status: [`docs/roadmap.md`](roadmap.md)
-- Specs: [`docs/superpowers/specs/`](superpowers/specs/) — password-auth (2026-06-05), tree-backup (2026-06-06)
+- Specs: [`docs/superpowers/specs/`](superpowers/specs/) — password-auth (2026-06-05),
+  tree-backup (2026-06-06), profile-fields (2026-06-07), kinship-calculator (2026-06-07)
 - Plans: [`docs/superpowers/plans/`](superpowers/plans/)
 - Data format: [`docs/data-format.md`](data-format.md)
+
+---
+
+## 13. Profile fields & kinship calculator
+
+Two feature areas added 2026-06-07. Both ride in the existing `tree_data.data`
+JSONB (no schema migration).
+
+### Contact + deceased/dates (`lang.ts`, `tree.ts`, `styles.css`)
+- New optional flat fields on a person: `email`, `phone`, `wechat`, `instagram`,
+  `facebook`, `linkedin`, `deceased` (boolean), `death_date` (ISO). `mergePersonUpdate`
+  trims them, drops empties (never persists `""`), coerces `deceased` to a real
+  boolean, and clears removed keys; `toDisplayPerson` passes them through.
+- **Form:** the library renders each as a text field; the form MutationObserver
+  upgrades `death_date` to a date picker, renders `deceased` as a checkbox (writing
+  into the hidden field the library persists), and groups the six contact inputs in a
+  collapsible `<details>` fieldset (open only when a value exists).
+- **Card:** line 3 is `lifeDates()` — birth year for the living, `1940–2012` for the
+  deceased; deceased cards get a `card-deceased` dim. A ⓘ button (present only when
+  contact data exists) opens an app-side popup listing contacts as `mailto:`/`tel:`/
+  social links.
+
+### Chinese kinship calculator (`app/src/kinship/`)
+- **Engine (pure, unit-tested):** `kinshipTerm(sourceId, targetId, people)` →
+  `{ term, candidates, chain, ambiguous }`. `chain.ts` walks the `rels` graph
+  (parent/child/spouse/sibling edges) and renders the connection as a Chinese
+  relationship chain (e.g. `爸爸的哥哥`), choosing elder/younger sibling words from
+  birthdays. `index.ts` feeds the chain to **`relationship.js`** (MIT npm dep) for the
+  exact term, disambiguates elder/younger multi-candidate results (堂哥/堂弟) by
+  birthday, and falls back to the readable chain (`ambiguous`) when no standard term
+  exists. No generation cap — the library covers deep lineal terms.
+- **UI (`tree.ts`):** a 称 button per card sets/clears that person as the **source**
+  (persisted per-viewer in `localStorage`, key `family-chart:kinship-source`). The
+  source card gets an accent ring; a header chip names it with a ✕ clear; card line 4
+  shows each person's term relative to the source (ambiguous terms get a trailing `?`).
+  Toggling re-runs `chart.updateTree()` (no full rebuild, so pan/zoom is kept).

@@ -9,6 +9,17 @@
 
 ## Done
 
+- [x] **Contact fields + deceased/dates** — per-person email, phone, WeChat, Instagram,
+      Facebook, LinkedIn (stored in `data` JSONB; no migration). Contact info shows in a
+      click-to-view popup (ⓘ on the card); the edit form groups it in a collapsible
+      fieldset. Deceased flag + death date: deceased cards are dimmed and card line 3
+      shows life dates ("1940–2012"). *(see spec.md §13)*
+- [x] **Chinese kinship calculator** — set any person as the "source" (称 button on the
+      card) and every card shows the exact Chinese term relative to them (父亲 / 外婆 /
+      二舅 / 表妹 …). Engine `app/src/kinship/` walks the `rels` graph → Chinese relation
+      chain (birthday-driven 哥/弟 seniority) → `relationship.js` (MIT) for the term;
+      source persisted per-viewer in localStorage. *(see spec.md §13)*
+
 - [x] **CJK glyphs on cards** — Chinese card text rendered as tofu/blank because the
       library CSS locked `.f3` to `'Roboto'` (no CJK glyphs). Fixed with a
       higher-specificity card-text font override carrying a cross-platform CJK
